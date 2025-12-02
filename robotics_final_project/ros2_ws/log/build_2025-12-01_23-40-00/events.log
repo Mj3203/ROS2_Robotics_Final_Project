@@ -1,0 +1,69 @@
+[0.000000] (-) TimerEvent: {}
+[0.000245] (chess_vision) JobQueued: {'identifier': 'chess_vision', 'dependencies': OrderedDict()}
+[0.000299] (game_state) JobQueued: {'identifier': 'game_state', 'dependencies': OrderedDict()}
+[0.001297] (chess_vision) JobStarted: {'identifier': 'chess_vision'}
+[0.030516] (game_state) JobStarted: {'identifier': 'game_state'}
+[0.102401] (-) TimerEvent: {}
+[0.204701] (-) TimerEvent: {}
+[0.309286] (-) TimerEvent: {}
+[0.413509] (-) TimerEvent: {}
+[0.518018] (-) TimerEvent: {}
+[0.619242] (-) TimerEvent: {}
+[0.723714] (-) TimerEvent: {}
+[0.828119] (-) TimerEvent: {}
+[0.929414] (-) TimerEvent: {}
+[1.033816] (-) TimerEvent: {}
+[1.138221] (-) TimerEvent: {}
+[1.241583] (-) TimerEvent: {}
+[1.345314] (-) TimerEvent: {}
+[1.446223] (-) TimerEvent: {}
+[1.458251] (chess_vision) Command: {'cmd': ['/usr/bin/python3', '-W', 'ignore:setup.py install is deprecated', '-W', 'ignore:easy_install command is deprecated', 'setup.py', 'develop', '--editable', '--build-directory', '/robotics_final_project/ros2_ws/build/chess_vision/build', '--no-deps', 'symlink_data', '--force'], 'cwd': '/robotics_final_project/ros2_ws/build/chess_vision', 'env': {'HOSTNAME': 'de7894da5ef9', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/opt/ros/jazzy/opt/rviz_ogre_vendor/lib:/opt/ros/jazzy/lib/x86_64-linux-gnu:/opt/ros/jazzy/opt/gz_math_vendor/lib:/opt/ros/jazzy/opt/gz_utils_vendor/lib:/opt/ros/jazzy/opt/gz_cmake_vendor/lib:/opt/ros/jazzy/lib', 'HOME': '/root', 'OLDPWD': '/robotics_final_project/ros2_ws/src', 'ROS_PYTHON_VERSION': '3', 'PS1': '(venv) \\[\\e]0;\\u@\\h: \\w\\a\\]${debian_chroot:+($debian_chroot)}\\u@\\h:\\w\\$', 'ROS_DISTRO': 'jazzy', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'TERM': 'xterm', 'PATH': '/robotics_final_project/ros2_ws/venv/bin:/opt/ros/jazzy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'LANG': 'C.UTF-8', 'VIRTUAL_ENV_PROMPT': '(venv)', 'LS_COLORS': 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=00:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.avif=01;35:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:*~=00;90:*#=00;90:*.bak=00;90:*.crdownload=00;90:*.dpkg-dist=00;90:*.dpkg-new=00;90:*.dpkg-old=00;90:*.dpkg-tmp=00;90:*.old=00;90:*.orig=00;90:*.part=00;90:*.rej=00;90:*.rpmnew=00;90:*.rpmorig=00;90:*.rpmsave=00;90:*.swp=00;90:*.tmp=00;90:*.ucf-dist=00;90:*.ucf-new=00;90:*.ucf-old=00;90:', 'AMENT_PREFIX_PATH': '/opt/ros/jazzy', 'VIRTUAL_ENV': '/robotics_final_project/ros2_ws/venv', 'ROS_AUTOMATIC_DISCOVERY_RANGE': 'SUBNET', 'PWD': '/robotics_final_project/ros2_ws/build/chess_vision', 'LC_ALL': 'C.UTF-8', 'PYTHONPATH': '/robotics_final_project/ros2_ws/build/chess_vision/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/robotics_final_project/ros2_ws/install/chess_vision/lib/python3.12/site-packages:/opt/ros/jazzy/lib/python3.12/site-packages', 'COLCON': '1', 'CMAKE_PREFIX_PATH': '/opt/ros/jazzy/opt/gz_math_vendor:/opt/ros/jazzy/opt/gz_utils_vendor:/opt/ros/jazzy/opt/gz_cmake_vendor'}, 'shell': False}
+[1.472962] (game_state) Command: {'cmd': ['/usr/bin/python3', '-W', 'ignore:setup.py install is deprecated', '-W', 'ignore:easy_install command is deprecated', 'setup.py', 'develop', '--editable', '--build-directory', '/robotics_final_project/ros2_ws/build/game_state/build', '--no-deps', 'symlink_data', '--force'], 'cwd': '/robotics_final_project/ros2_ws/build/game_state', 'env': {'HOSTNAME': 'de7894da5ef9', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/opt/ros/jazzy/opt/rviz_ogre_vendor/lib:/opt/ros/jazzy/lib/x86_64-linux-gnu:/opt/ros/jazzy/opt/gz_math_vendor/lib:/opt/ros/jazzy/opt/gz_utils_vendor/lib:/opt/ros/jazzy/opt/gz_cmake_vendor/lib:/opt/ros/jazzy/lib', 'HOME': '/root', 'OLDPWD': '/robotics_final_project/ros2_ws/src', 'ROS_PYTHON_VERSION': '3', 'PS1': '(venv) \\[\\e]0;\\u@\\h: \\w\\a\\]${debian_chroot:+($debian_chroot)}\\u@\\h:\\w\\$', 'ROS_DISTRO': 'jazzy', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'TERM': 'xterm', 'PATH': '/robotics_final_project/ros2_ws/venv/bin:/opt/ros/jazzy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'LANG': 'C.UTF-8', 'VIRTUAL_ENV_PROMPT': '(venv)', 'LS_COLORS': 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=00:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.avif=01;35:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:*~=00;90:*#=00;90:*.bak=00;90:*.crdownload=00;90:*.dpkg-dist=00;90:*.dpkg-new=00;90:*.dpkg-old=00;90:*.dpkg-tmp=00;90:*.old=00;90:*.orig=00;90:*.part=00;90:*.rej=00;90:*.rpmnew=00;90:*.rpmorig=00;90:*.rpmsave=00;90:*.swp=00;90:*.tmp=00;90:*.ucf-dist=00;90:*.ucf-new=00;90:*.ucf-old=00;90:', 'AMENT_PREFIX_PATH': '/opt/ros/jazzy', 'VIRTUAL_ENV': '/robotics_final_project/ros2_ws/venv', 'ROS_AUTOMATIC_DISCOVERY_RANGE': 'SUBNET', 'PWD': '/robotics_final_project/ros2_ws/build/game_state', 'LC_ALL': 'C.UTF-8', 'PYTHONPATH': '/robotics_final_project/ros2_ws/build/game_state/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/robotics_final_project/ros2_ws/install/game_state/lib/python3.12/site-packages:/opt/ros/jazzy/lib/python3.12/site-packages', 'COLCON': '1', 'CMAKE_PREFIX_PATH': '/opt/ros/jazzy/opt/gz_math_vendor:/opt/ros/jazzy/opt/gz_utils_vendor:/opt/ros/jazzy/opt/gz_cmake_vendor'}, 'shell': False}
+[1.546424] (-) TimerEvent: {}
+[1.648924] (-) TimerEvent: {}
+[1.749270] (-) TimerEvent: {}
+[1.849810] (-) TimerEvent: {}
+[1.884911] (game_state) StdoutLine: {'line': b'running develop\n'}
+[1.888098] (chess_vision) StdoutLine: {'line': b'running develop\n'}
+[1.950142] (-) TimerEvent: {}
+[2.050524] (-) TimerEvent: {}
+[2.109440] (game_state) StdoutLine: {'line': b'running egg_info\n'}
+[2.110633] (chess_vision) StdoutLine: {'line': b'running egg_info\n'}
+[2.129831] (game_state) StdoutLine: {'line': b'writing game_state.egg-info/PKG-INFO\n'}
+[2.130635] (chess_vision) StdoutLine: {'line': b'writing chess_vision.egg-info/PKG-INFO\n'}
+[2.130937] (game_state) StdoutLine: {'line': b'writing dependency_links to game_state.egg-info/dependency_links.txt\n'}
+[2.131125] (game_state) StdoutLine: {'line': b'writing entry points to game_state.egg-info/entry_points.txt\n'}
+[2.131423] (chess_vision) StdoutLine: {'line': b'writing dependency_links to chess_vision.egg-info/dependency_links.txt\n'}
+[2.131605] (game_state) StdoutLine: {'line': b'writing requirements to game_state.egg-info/requires.txt\n'}
+[2.132072] (chess_vision) StdoutLine: {'line': b'writing entry points to chess_vision.egg-info/entry_points.txt\n'}
+[2.132318] (chess_vision) StdoutLine: {'line': b'writing requirements to chess_vision.egg-info/requires.txt\n'}
+[2.132659] (chess_vision) StdoutLine: {'line': b'writing top-level names to chess_vision.egg-info/top_level.txt\n'}
+[2.132776] (game_state) StdoutLine: {'line': b'writing top-level names to game_state.egg-info/top_level.txt\n'}
+[2.150727] (-) TimerEvent: {}
+[2.175772] (chess_vision) StdoutLine: {'line': b"reading manifest file 'chess_vision.egg-info/SOURCES.txt'\n"}
+[2.176745] (game_state) StdoutLine: {'line': b"reading manifest file 'game_state.egg-info/SOURCES.txt'\n"}
+[2.177439] (chess_vision) StdoutLine: {'line': b"writing manifest file 'chess_vision.egg-info/SOURCES.txt'\n"}
+[2.177891] (game_state) StdoutLine: {'line': b"writing manifest file 'game_state.egg-info/SOURCES.txt'\n"}
+[2.199809] (chess_vision) StdoutLine: {'line': b'running build_ext\n'}
+[2.200139] (game_state) StdoutLine: {'line': b'running build_ext\n'}
+[2.209790] (game_state) StdoutLine: {'line': b'Creating /robotics_final_project/ros2_ws/install/game_state/lib/python3.12/site-packages/game-state.egg-link (link to .)\n'}
+[2.209985] (chess_vision) StdoutLine: {'line': b'Creating /robotics_final_project/ros2_ws/install/chess_vision/lib/python3.12/site-packages/chess-vision.egg-link (link to .)\n'}
+[2.210583] (game_state) StdoutLine: {'line': b'Installing game_state_processor script to /robotics_final_project/ros2_ws/install/game_state/lib/game_state\n'}
+[2.210817] (chess_vision) StdoutLine: {'line': b'Installing camera_publisher script to /robotics_final_project/ros2_ws/install/chess_vision/lib/chess_vision\n'}
+[2.211027] (chess_vision) StdoutLine: {'line': b'Installing homography_processor script to /robotics_final_project/ros2_ws/install/chess_vision/lib/chess_vision\n'}
+[2.211276] (chess_vision) StdoutLine: {'line': b'\n'}
+[2.211396] (chess_vision) StdoutLine: {'line': b'Installed /robotics_final_project/ros2_ws/build/chess_vision\n'}
+[2.211804] (chess_vision) StdoutLine: {'line': b'running symlink_data\n'}
+[2.212082] (game_state) StdoutLine: {'line': b'\n'}
+[2.212293] (game_state) StdoutLine: {'line': b'Installed /robotics_final_project/ros2_ws/build/game_state\n'}
+[2.212437] (game_state) StdoutLine: {'line': b'running symlink_data\n'}
+[2.212791] (game_state) StdoutLine: {'line': b'symbolically linking /robotics_final_project/ros2_ws/build/game_state/resource/game_state -> /robotics_final_project/ros2_ws/install/game_state/share/ament_index/resource_index/packages\n'}
+[2.213096] (chess_vision) StdoutLine: {'line': b'symbolically linking /robotics_final_project/ros2_ws/build/chess_vision/resource/chess_vision -> /robotics_final_project/ros2_ws/install/chess_vision/share/ament_index/resource_index/packages\n'}
+[2.213182] (chess_vision) StdoutLine: {'line': b'symbolically linking /robotics_final_project/ros2_ws/build/chess_vision/package.xml -> /robotics_final_project/ros2_ws/install/chess_vision/share/chess_vision\n'}
+[2.213259] (game_state) StdoutLine: {'line': b'symbolically linking /robotics_final_project/ros2_ws/build/game_state/package.xml -> /robotics_final_project/ros2_ws/install/game_state/share/game_state\n'}
+[2.252409] (-) TimerEvent: {}
+[2.256290] (game_state) CommandEnded: {'returncode': 0}
+[2.287059] (game_state) JobEnded: {'identifier': 'game_state', 'rc': 0}
+[2.289379] (chess_vision) CommandEnded: {'returncode': 0}
+[2.300981] (chess_vision) JobEnded: {'identifier': 'chess_vision', 'rc': 0}
+[2.302733] (-) EventReactorShutdown: {}

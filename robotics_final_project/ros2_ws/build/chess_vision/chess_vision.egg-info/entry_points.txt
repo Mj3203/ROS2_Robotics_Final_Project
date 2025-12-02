@@ -1,0 +1,3 @@
+[console_scripts]
+camera_publisher = chess_vision.camera_publisher:main
+homography_processor = chess_vision.homography_processor:main

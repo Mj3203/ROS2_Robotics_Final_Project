@@ -1,0 +1,9 @@
+source;share/game_state/hook/pythonpath.ps1
+source;share/game_state/hook/pythonpath.dsv
+source;share/game_state/hook/pythonpath.sh
+source;share/game_state/hook/ament_prefix_path.ps1
+source;share/game_state/hook/ament_prefix_path.dsv
+source;share/game_state/hook/ament_prefix_path.sh
+source;../../build/game_state/share/game_state/hook/pythonpath_develop.ps1
+source;../../build/game_state/share/game_state/hook/pythonpath_develop.dsv
+source;../../build/game_state/share/game_state/hook/pythonpath_develop.sh

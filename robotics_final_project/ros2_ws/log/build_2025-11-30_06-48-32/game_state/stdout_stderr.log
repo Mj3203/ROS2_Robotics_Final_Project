@@ -1,0 +1,20 @@
+running egg_info
+writing ../../build/game_state/game_state.egg-info/PKG-INFO
+writing dependency_links to ../../build/game_state/game_state.egg-info/dependency_links.txt
+writing requirements to ../../build/game_state/game_state.egg-info/requires.txt
+writing top-level names to ../../build/game_state/game_state.egg-info/top_level.txt
+reading manifest file '../../build/game_state/game_state.egg-info/SOURCES.txt'
+writing manifest file '../../build/game_state/game_state.egg-info/SOURCES.txt'
+running build
+running build_py
+copying game_state/game_state_processor.py -> /robotics_final_project/ros2_ws/build/game_state/build/lib/game_state
+running install
+running install_lib
+copying /robotics_final_project/ros2_ws/build/game_state/build/lib/game_state/game_state_processor.py -> /robotics_final_project/ros2_ws/install/game_state/lib/python3.12/site-packages/game_state
+byte-compiling /robotics_final_project/ros2_ws/install/game_state/lib/python3.12/site-packages/game_state/game_state_processor.py to game_state_processor.cpython-312.pyc
+running install_data
+running install_egg_info
+removing '/robotics_final_project/ros2_ws/install/game_state/lib/python3.12/site-packages/game_state-0.0.0-py3.12.egg-info' (and everything under it)
+Copying ../../build/game_state/game_state.egg-info to /robotics_final_project/ros2_ws/install/game_state/lib/python3.12/site-packages/game_state-0.0.0-py3.12.egg-info
+running install_scripts
+writing list of installed files to '/robotics_final_project/ros2_ws/build/game_state/install.log'
