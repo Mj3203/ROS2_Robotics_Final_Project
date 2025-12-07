@@ -1,0 +1,296 @@
+[0.090s] DEBUG:colcon:Command line arguments: ['/usr/bin/colcon', 'build', '--symlink-install']
+[0.090s] DEBUG:colcon:Parsed command line arguments: Namespace(log_base=None, log_level=None, verb_name='build', build_base='build', install_base='install', merge_install=False, symlink_install=True, test_result_base=None, continue_on_error=False, executor='parallel', parallel_workers=8, event_handlers=None, ignore_user_meta=False, metas=['./colcon.meta'], base_paths=['.'], packages_ignore=None, packages_ignore_regex=None, paths=None, packages_up_to=None, packages_up_to_regex=None, packages_above=None, packages_above_and_dependencies=None, packages_above_depth=None, packages_select_by_dep=None, packages_skip_by_dep=None, packages_skip_up_to=None, packages_select_build_failed=False, packages_skip_build_finished=False, packages_select_test_failures=False, packages_skip_test_passed=False, packages_select=None, packages_skip=None, packages_select_regex=None, packages_skip_regex=None, packages_start=None, packages_end=None, cmake_args=None, cmake_target=None, cmake_target_skip_unavailable=False, cmake_clean_cache=False, cmake_clean_first=False, cmake_force_configure=False, ament_cmake_args=None, catkin_cmake_args=None, catkin_skip_building_tests=False, mixin_files=None, mixin=None, verb_parser=<colcon_mixin.mixin.mixin_argument.MixinArgumentDecorator object at 0x73ff91d518b0>, verb_extension=<colcon_core.verb.build.BuildVerb object at 0x73ff91d51550>, main=<bound method BuildVerb.main of <colcon_core.verb.build.BuildVerb object at 0x73ff91d51550>>, mixin_verb=('build',))
+[0.121s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) check parameters
+[0.122s] INFO:colcon.colcon_metadata.package_discovery.colcon_meta:Using configuration from '/root/.colcon/metadata/default/Gazebo.meta'
+[0.122s] INFO:colcon.colcon_metadata.package_discovery.colcon_meta:Using configuration from '/root/.colcon/metadata/default/fastdds.meta'
+[0.122s] INFO:colcon.colcon_metadata.package_discovery.colcon_meta:Using configuration from '/root/.colcon/metadata/default/fastrtps.meta'
+[0.122s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) check parameters
+[0.122s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) check parameters
+[0.122s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) check parameters
+[0.122s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) discover
+[0.122s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) discover
+[0.122s] INFO:colcon.colcon_core.package_discovery:Crawling recursively for packages in '/robotics_final_project/ros2_ws'
+[0.122s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ignore', 'ignore_ament_install']
+[0.123s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore'
+[0.123s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore_ament_install'
+[0.123s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_pkg']
+[0.123s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_pkg'
+[0.123s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_meta']
+[0.123s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_meta'
+[0.123s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ros']
+[0.123s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ros'
+[0.143s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['cmake', 'python']
+[0.143s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'cmake'
+[0.143s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python'
+[0.143s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['python_setup_py']
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python_setup_py'
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extensions ['ignore', 'ignore_ament_install']
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extension 'ignore'
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(build) ignored
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extensions ['ignore', 'ignore_ament_install']
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extension 'ignore'
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(install) ignored
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extensions ['ignore', 'ignore_ament_install']
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extension 'ignore'
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(log) ignored
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['ignore', 'ignore_ament_install']
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ignore'
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ignore_ament_install'
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['colcon_pkg']
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'colcon_pkg'
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['colcon_meta']
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'colcon_meta'
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['ros']
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ros'
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['cmake', 'python']
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'cmake'
+[0.144s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'python'
+[0.145s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['python_setup_py']
+[0.145s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'python_setup_py'
+[0.145s] Level 1:colcon.colcon_core.package_identification:_identify(src/chess_ai) by extensions ['ignore', 'ignore_ament_install']
+[0.145s] Level 1:colcon.colcon_core.package_identification:_identify(src/chess_ai) by extension 'ignore'
+[0.145s] Level 1:colcon.colcon_core.package_identification:_identify(src/chess_ai) by extension 'ignore_ament_install'
+[0.145s] Level 1:colcon.colcon_core.package_identification:_identify(src/chess_ai) by extensions ['colcon_pkg']
+[0.145s] Level 1:colcon.colcon_core.package_identification:_identify(src/chess_ai) by extension 'colcon_pkg'
+[0.145s] Level 1:colcon.colcon_core.package_identification:_identify(src/chess_ai) by extensions ['colcon_meta']
+[0.145s] Level 1:colcon.colcon_core.package_identification:_identify(src/chess_ai) by extension 'colcon_meta'
+[0.145s] Level 1:colcon.colcon_core.package_identification:_identify(src/chess_ai) by extensions ['ros']
+[0.145s] Level 1:colcon.colcon_core.package_identification:_identify(src/chess_ai) by extension 'ros'
+[0.147s] DEBUG:colcon.colcon_core.package_identification:Package 'src/chess_ai' with type 'ros.ament_python' and name 'chess_ai'
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/chess_vision) by extensions ['ignore', 'ignore_ament_install']
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/chess_vision) by extension 'ignore'
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/chess_vision) by extension 'ignore_ament_install'
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/chess_vision) by extensions ['colcon_pkg']
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/chess_vision) by extension 'colcon_pkg'
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/chess_vision) by extensions ['colcon_meta']
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/chess_vision) by extension 'colcon_meta'
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/chess_vision) by extensions ['ros']
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/chess_vision) by extension 'ros'
+[0.147s] DEBUG:colcon.colcon_core.package_identification:Package 'src/chess_vision' with type 'ros.ament_python' and name 'chess_vision'
+[0.147s] Level 1:colcon.colcon_core.package_identification:_identify(src/game_orchestrator) by extensions ['ignore', 'ignore_ament_install']
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/game_orchestrator) by extension 'ignore'
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/game_orchestrator) by extension 'ignore_ament_install'
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/game_orchestrator) by extensions ['colcon_pkg']
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/game_orchestrator) by extension 'colcon_pkg'
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/game_orchestrator) by extensions ['colcon_meta']
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/game_orchestrator) by extension 'colcon_meta'
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/game_orchestrator) by extensions ['ros']
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/game_orchestrator) by extension 'ros'
+[0.148s] DEBUG:colcon.colcon_core.package_identification:Package 'src/game_orchestrator' with type 'ros.ament_python' and name 'game_orchestrator'
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/game_state) by extensions ['ignore', 'ignore_ament_install']
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/game_state) by extension 'ignore'
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/game_state) by extension 'ignore_ament_install'
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/game_state) by extensions ['colcon_pkg']
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/game_state) by extension 'colcon_pkg'
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/game_state) by extensions ['colcon_meta']
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/game_state) by extension 'colcon_meta'
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/game_state) by extensions ['ros']
+[0.148s] Level 1:colcon.colcon_core.package_identification:_identify(src/game_state) by extension 'ros'
+[0.149s] DEBUG:colcon.colcon_core.package_identification:Package 'src/game_state' with type 'ros.ament_python' and name 'game_state'
+[0.149s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) using defaults
+[0.149s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) discover
+[0.149s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) using defaults
+[0.149s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) discover
+[0.149s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) using defaults
+[0.163s] Level 5:colcon.colcon_core.verb:set package 'chess_ai' build argument 'cmake_args' from command line to 'None'
+[0.163s] Level 5:colcon.colcon_core.verb:set package 'chess_ai' build argument 'cmake_target' from command line to 'None'
+[0.163s] Level 5:colcon.colcon_core.verb:set package 'chess_ai' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.163s] Level 5:colcon.colcon_core.verb:set package 'chess_ai' build argument 'cmake_clean_cache' from command line to 'False'
+[0.163s] Level 5:colcon.colcon_core.verb:set package 'chess_ai' build argument 'cmake_clean_first' from command line to 'False'
+[0.163s] Level 5:colcon.colcon_core.verb:set package 'chess_ai' build argument 'cmake_force_configure' from command line to 'False'
+[0.163s] Level 5:colcon.colcon_core.verb:set package 'chess_ai' build argument 'ament_cmake_args' from command line to 'None'
+[0.163s] Level 5:colcon.colcon_core.verb:set package 'chess_ai' build argument 'catkin_cmake_args' from command line to 'None'
+[0.163s] Level 5:colcon.colcon_core.verb:set package 'chess_ai' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.163s] DEBUG:colcon.colcon_core.verb:Building package 'chess_ai' with the following arguments: {'ament_cmake_args': None, 'build_base': '/robotics_final_project/ros2_ws/build/chess_ai', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/robotics_final_project/ros2_ws/install/chess_ai', 'merge_install': False, 'path': '/robotics_final_project/ros2_ws/src/chess_ai', 'symlink_install': True, 'test_result_base': None}
+[0.163s] Level 5:colcon.colcon_core.verb:set package 'chess_vision' build argument 'cmake_args' from command line to 'None'
+[0.163s] Level 5:colcon.colcon_core.verb:set package 'chess_vision' build argument 'cmake_target' from command line to 'None'
+[0.163s] Level 5:colcon.colcon_core.verb:set package 'chess_vision' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.163s] Level 5:colcon.colcon_core.verb:set package 'chess_vision' build argument 'cmake_clean_cache' from command line to 'False'
+[0.163s] Level 5:colcon.colcon_core.verb:set package 'chess_vision' build argument 'cmake_clean_first' from command line to 'False'
+[0.163s] Level 5:colcon.colcon_core.verb:set package 'chess_vision' build argument 'cmake_force_configure' from command line to 'False'
+[0.163s] Level 5:colcon.colcon_core.verb:set package 'chess_vision' build argument 'ament_cmake_args' from command line to 'None'
+[0.163s] Level 5:colcon.colcon_core.verb:set package 'chess_vision' build argument 'catkin_cmake_args' from command line to 'None'
+[0.163s] Level 5:colcon.colcon_core.verb:set package 'chess_vision' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.163s] DEBUG:colcon.colcon_core.verb:Building package 'chess_vision' with the following arguments: {'ament_cmake_args': None, 'build_base': '/robotics_final_project/ros2_ws/build/chess_vision', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/robotics_final_project/ros2_ws/install/chess_vision', 'merge_install': False, 'path': '/robotics_final_project/ros2_ws/src/chess_vision', 'symlink_install': True, 'test_result_base': None}
+[0.164s] Level 5:colcon.colcon_core.verb:set package 'game_orchestrator' build argument 'cmake_args' from command line to 'None'
+[0.164s] Level 5:colcon.colcon_core.verb:set package 'game_orchestrator' build argument 'cmake_target' from command line to 'None'
+[0.164s] Level 5:colcon.colcon_core.verb:set package 'game_orchestrator' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.164s] Level 5:colcon.colcon_core.verb:set package 'game_orchestrator' build argument 'cmake_clean_cache' from command line to 'False'
+[0.164s] Level 5:colcon.colcon_core.verb:set package 'game_orchestrator' build argument 'cmake_clean_first' from command line to 'False'
+[0.164s] Level 5:colcon.colcon_core.verb:set package 'game_orchestrator' build argument 'cmake_force_configure' from command line to 'False'
+[0.164s] Level 5:colcon.colcon_core.verb:set package 'game_orchestrator' build argument 'ament_cmake_args' from command line to 'None'
+[0.164s] Level 5:colcon.colcon_core.verb:set package 'game_orchestrator' build argument 'catkin_cmake_args' from command line to 'None'
+[0.164s] Level 5:colcon.colcon_core.verb:set package 'game_orchestrator' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.164s] DEBUG:colcon.colcon_core.verb:Building package 'game_orchestrator' with the following arguments: {'ament_cmake_args': None, 'build_base': '/robotics_final_project/ros2_ws/build/game_orchestrator', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/robotics_final_project/ros2_ws/install/game_orchestrator', 'merge_install': False, 'path': '/robotics_final_project/ros2_ws/src/game_orchestrator', 'symlink_install': True, 'test_result_base': None}
+[0.164s] Level 5:colcon.colcon_core.verb:set package 'game_state' build argument 'cmake_args' from command line to 'None'
+[0.164s] Level 5:colcon.colcon_core.verb:set package 'game_state' build argument 'cmake_target' from command line to 'None'
+[0.164s] Level 5:colcon.colcon_core.verb:set package 'game_state' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.164s] Level 5:colcon.colcon_core.verb:set package 'game_state' build argument 'cmake_clean_cache' from command line to 'False'
+[0.164s] Level 5:colcon.colcon_core.verb:set package 'game_state' build argument 'cmake_clean_first' from command line to 'False'
+[0.164s] Level 5:colcon.colcon_core.verb:set package 'game_state' build argument 'cmake_force_configure' from command line to 'False'
+[0.164s] Level 5:colcon.colcon_core.verb:set package 'game_state' build argument 'ament_cmake_args' from command line to 'None'
+[0.164s] Level 5:colcon.colcon_core.verb:set package 'game_state' build argument 'catkin_cmake_args' from command line to 'None'
+[0.164s] Level 5:colcon.colcon_core.verb:set package 'game_state' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.164s] DEBUG:colcon.colcon_core.verb:Building package 'game_state' with the following arguments: {'ament_cmake_args': None, 'build_base': '/robotics_final_project/ros2_ws/build/game_state', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/robotics_final_project/ros2_ws/install/game_state', 'merge_install': False, 'path': '/robotics_final_project/ros2_ws/src/game_state', 'symlink_install': True, 'test_result_base': None}
+[0.164s] INFO:colcon.colcon_core.executor:Executing jobs using 'parallel' executor
+[0.165s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete
+[0.165s] INFO:colcon.colcon_ros.task.ament_python.build:Building ROS package in '/robotics_final_project/ros2_ws/src/chess_ai' with build type 'ament_python'
+[0.165s] Level 1:colcon.colcon_core.shell:create_environment_hook('chess_ai', 'ament_prefix_path')
+[0.170s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_core.shell.bat': Not used on non-Windows systems
+[0.171s] INFO:colcon.colcon_core.shell:Creating environment hook '/robotics_final_project/ros2_ws/install/chess_ai/share/chess_ai/hook/ament_prefix_path.ps1'
+[0.172s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/robotics_final_project/ros2_ws/install/chess_ai/share/chess_ai/hook/ament_prefix_path.dsv'
+[0.173s] INFO:colcon.colcon_core.shell:Creating environment hook '/robotics_final_project/ros2_ws/install/chess_ai/share/chess_ai/hook/ament_prefix_path.sh'
+[0.175s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.175s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.177s] WARNING:colcon.colcon_ros.prefix_path.ament:The path '/robotics_final_project/ros2_ws/install/game_state' in the environment variable AMENT_PREFIX_PATH doesn't exist
+[0.177s] WARNING:colcon.colcon_ros.prefix_path.ament:The path '/robotics_final_project/ros2_ws/install/game_orchestrator' in the environment variable AMENT_PREFIX_PATH doesn't exist
+[0.177s] WARNING:colcon.colcon_ros.prefix_path.ament:The path '/robotics_final_project/ros2_ws/install/chess_vision' in the environment variable AMENT_PREFIX_PATH doesn't exist
+[0.184s] INFO:colcon.colcon_ros.task.ament_python.build:Building ROS package in '/robotics_final_project/ros2_ws/src/chess_vision' with build type 'ament_python'
+[0.184s] Level 1:colcon.colcon_core.shell:create_environment_hook('chess_vision', 'ament_prefix_path')
+[0.185s] INFO:colcon.colcon_core.shell:Creating environment hook '/robotics_final_project/ros2_ws/install/chess_vision/share/chess_vision/hook/ament_prefix_path.ps1'
+[0.186s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/robotics_final_project/ros2_ws/install/chess_vision/share/chess_vision/hook/ament_prefix_path.dsv'
+[0.186s] INFO:colcon.colcon_core.shell:Creating environment hook '/robotics_final_project/ros2_ws/install/chess_vision/share/chess_vision/hook/ament_prefix_path.sh'
+[0.186s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.186s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.191s] INFO:colcon.colcon_ros.task.ament_python.build:Building ROS package in '/robotics_final_project/ros2_ws/src/game_orchestrator' with build type 'ament_python'
+[0.191s] Level 1:colcon.colcon_core.shell:create_environment_hook('game_orchestrator', 'ament_prefix_path')
+[0.191s] INFO:colcon.colcon_core.shell:Creating environment hook '/robotics_final_project/ros2_ws/install/game_orchestrator/share/game_orchestrator/hook/ament_prefix_path.ps1'
+[0.192s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/robotics_final_project/ros2_ws/install/game_orchestrator/share/game_orchestrator/hook/ament_prefix_path.dsv'
+[0.193s] INFO:colcon.colcon_core.shell:Creating environment hook '/robotics_final_project/ros2_ws/install/game_orchestrator/share/game_orchestrator/hook/ament_prefix_path.sh'
+[0.193s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.193s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.197s] INFO:colcon.colcon_ros.task.ament_python.build:Building ROS package in '/robotics_final_project/ros2_ws/src/game_state' with build type 'ament_python'
+[0.197s] Level 1:colcon.colcon_core.shell:create_environment_hook('game_state', 'ament_prefix_path')
+[0.197s] INFO:colcon.colcon_core.shell:Creating environment hook '/robotics_final_project/ros2_ws/install/game_state/share/game_state/hook/ament_prefix_path.ps1'
+[0.198s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/robotics_final_project/ros2_ws/install/game_state/share/game_state/hook/ament_prefix_path.dsv'
+[0.198s] INFO:colcon.colcon_core.shell:Creating environment hook '/robotics_final_project/ros2_ws/install/game_state/share/game_state/hook/ament_prefix_path.sh'
+[0.199s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.199s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.387s] INFO:colcon.colcon_core.task.python.build:Building Python package in '/robotics_final_project/ros2_ws/src/chess_ai'
+[0.387s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.387s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.565s] INFO:colcon.colcon_core.task.python.build:Building Python package in '/robotics_final_project/ros2_ws/src/chess_vision'
+[0.565s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.565s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.743s] INFO:colcon.colcon_core.task.python.build:Building Python package in '/robotics_final_project/ros2_ws/src/game_orchestrator'
+[0.744s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.744s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.937s] INFO:colcon.colcon_core.task.python.build:Building Python package in '/robotics_final_project/ros2_ws/src/game_state'
+[0.938s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.938s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[1.421s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/robotics_final_project/ros2_ws/build/chess_vision': PYTHONPATH=/robotics_final_project/ros2_ws/build/chess_vision/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/robotics_final_project/ros2_ws/install/chess_vision/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /robotics_final_project/ros2_ws/build/chess_vision/build --no-deps symlink_data
+[1.429s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/robotics_final_project/ros2_ws/build/game_state': PYTHONPATH=/robotics_final_project/ros2_ws/build/game_state/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/robotics_final_project/ros2_ws/install/game_state/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /robotics_final_project/ros2_ws/build/game_state/build --no-deps symlink_data
+[1.435s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/robotics_final_project/ros2_ws/build/game_orchestrator': PYTHONPATH=/robotics_final_project/ros2_ws/build/game_orchestrator/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/robotics_final_project/ros2_ws/install/game_orchestrator/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /robotics_final_project/ros2_ws/build/game_orchestrator/build --no-deps symlink_data
+[1.444s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/robotics_final_project/ros2_ws/build/chess_ai': PYTHONPATH=/robotics_final_project/ros2_ws/build/chess_ai/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/robotics_final_project/ros2_ws/install/chess_ai/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /robotics_final_project/ros2_ws/build/chess_ai/build --no-deps symlink_data
+[2.009s] Level 1:colcon.colcon_core.shell:create_environment_hook('chess_ai', 'pythonpath_develop')
+[2.010s] INFO:colcon.colcon_core.shell:Creating environment hook '/robotics_final_project/ros2_ws/build/chess_ai/share/chess_ai/hook/pythonpath_develop.ps1'
+[2.010s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/robotics_final_project/ros2_ws/build/chess_ai' returned '0': PYTHONPATH=/robotics_final_project/ros2_ws/build/chess_ai/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/robotics_final_project/ros2_ws/install/chess_ai/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /robotics_final_project/ros2_ws/build/chess_ai/build --no-deps symlink_data
+[2.010s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/robotics_final_project/ros2_ws/build/chess_ai/share/chess_ai/hook/pythonpath_develop.dsv'
+[2.011s] INFO:colcon.colcon_core.shell:Creating environment hook '/robotics_final_project/ros2_ws/build/chess_ai/share/chess_ai/hook/pythonpath_develop.sh'
+[2.014s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/chess_ai' for CMake module files
+[2.014s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/chess_ai' for CMake config files
+[2.015s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/chess_ai/lib'
+[2.015s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/chess_ai/bin'
+[2.015s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/chess_ai/lib/pkgconfig/chess_ai.pc'
+[2.015s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/chess_ai/lib/python3.12/site-packages'
+[2.016s] Level 1:colcon.colcon_core.shell:create_environment_hook('chess_ai', 'pythonpath')
+[2.016s] INFO:colcon.colcon_core.shell:Creating environment hook '/robotics_final_project/ros2_ws/install/chess_ai/share/chess_ai/hook/pythonpath.ps1'
+[2.016s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/robotics_final_project/ros2_ws/install/chess_ai/share/chess_ai/hook/pythonpath.dsv'
+[2.017s] INFO:colcon.colcon_core.shell:Creating environment hook '/robotics_final_project/ros2_ws/install/chess_ai/share/chess_ai/hook/pythonpath.sh'
+[2.017s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/chess_ai/bin'
+[2.017s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(chess_ai)
+[2.017s] INFO:colcon.colcon_core.shell:Creating package script '/robotics_final_project/ros2_ws/install/chess_ai/share/chess_ai/package.ps1'
+[2.018s] INFO:colcon.colcon_core.shell:Creating package descriptor '/robotics_final_project/ros2_ws/install/chess_ai/share/chess_ai/package.dsv'
+[2.018s] INFO:colcon.colcon_core.shell:Creating package script '/robotics_final_project/ros2_ws/install/chess_ai/share/chess_ai/package.sh'
+[2.019s] INFO:colcon.colcon_core.shell:Creating package script '/robotics_final_project/ros2_ws/install/chess_ai/share/chess_ai/package.bash'
+[2.019s] INFO:colcon.colcon_core.shell:Creating package script '/robotics_final_project/ros2_ws/install/chess_ai/share/chess_ai/package.zsh'
+[2.020s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/robotics_final_project/ros2_ws/install/chess_ai/share/colcon-core/packages/chess_ai)
+[2.074s] Level 1:colcon.colcon_core.shell:create_environment_hook('game_orchestrator', 'pythonpath_develop')
+[2.074s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/robotics_final_project/ros2_ws/build/game_orchestrator' returned '0': PYTHONPATH=/robotics_final_project/ros2_ws/build/game_orchestrator/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/robotics_final_project/ros2_ws/install/game_orchestrator/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /robotics_final_project/ros2_ws/build/game_orchestrator/build --no-deps symlink_data
+[2.075s] INFO:colcon.colcon_core.shell:Creating environment hook '/robotics_final_project/ros2_ws/build/game_orchestrator/share/game_orchestrator/hook/pythonpath_develop.ps1'
+[2.078s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/robotics_final_project/ros2_ws/build/game_orchestrator/share/game_orchestrator/hook/pythonpath_develop.dsv'
+[2.079s] INFO:colcon.colcon_core.shell:Creating environment hook '/robotics_final_project/ros2_ws/build/game_orchestrator/share/game_orchestrator/hook/pythonpath_develop.sh'
+[2.080s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/game_orchestrator' for CMake module files
+[2.081s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/game_orchestrator' for CMake config files
+[2.081s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/game_orchestrator/lib'
+[2.081s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/game_orchestrator/bin'
+[2.081s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/game_orchestrator/lib/pkgconfig/game_orchestrator.pc'
+[2.082s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/game_orchestrator/lib/python3.12/site-packages'
+[2.082s] Level 1:colcon.colcon_core.shell:create_environment_hook('game_orchestrator', 'pythonpath')
+[2.082s] INFO:colcon.colcon_core.shell:Creating environment hook '/robotics_final_project/ros2_ws/install/game_orchestrator/share/game_orchestrator/hook/pythonpath.ps1'
+[2.083s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/robotics_final_project/ros2_ws/install/game_orchestrator/share/game_orchestrator/hook/pythonpath.dsv'
+[2.083s] INFO:colcon.colcon_core.shell:Creating environment hook '/robotics_final_project/ros2_ws/install/game_orchestrator/share/game_orchestrator/hook/pythonpath.sh'
+[2.084s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/game_orchestrator/bin'
+[2.084s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(game_orchestrator)
+[2.084s] INFO:colcon.colcon_core.shell:Creating package script '/robotics_final_project/ros2_ws/install/game_orchestrator/share/game_orchestrator/package.ps1'
+[2.085s] INFO:colcon.colcon_core.shell:Creating package descriptor '/robotics_final_project/ros2_ws/install/game_orchestrator/share/game_orchestrator/package.dsv'
+[2.085s] INFO:colcon.colcon_core.shell:Creating package script '/robotics_final_project/ros2_ws/install/game_orchestrator/share/game_orchestrator/package.sh'
+[2.086s] INFO:colcon.colcon_core.shell:Creating package script '/robotics_final_project/ros2_ws/install/game_orchestrator/share/game_orchestrator/package.bash'
+[2.086s] INFO:colcon.colcon_core.shell:Creating package script '/robotics_final_project/ros2_ws/install/game_orchestrator/share/game_orchestrator/package.zsh'
+[2.086s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/robotics_final_project/ros2_ws/install/game_orchestrator/share/colcon-core/packages/game_orchestrator)
+[2.089s] Level 1:colcon.colcon_core.shell:create_environment_hook('chess_vision', 'pythonpath_develop')
+[2.089s] INFO:colcon.colcon_core.shell:Creating environment hook '/robotics_final_project/ros2_ws/build/chess_vision/share/chess_vision/hook/pythonpath_develop.ps1'
+[2.090s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/robotics_final_project/ros2_ws/build/chess_vision' returned '0': PYTHONPATH=/robotics_final_project/ros2_ws/build/chess_vision/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/robotics_final_project/ros2_ws/install/chess_vision/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /robotics_final_project/ros2_ws/build/chess_vision/build --no-deps symlink_data
+[2.090s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/robotics_final_project/ros2_ws/build/chess_vision/share/chess_vision/hook/pythonpath_develop.dsv'
+[2.090s] INFO:colcon.colcon_core.shell:Creating environment hook '/robotics_final_project/ros2_ws/build/chess_vision/share/chess_vision/hook/pythonpath_develop.sh'
+[2.091s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/chess_vision' for CMake module files
+[2.091s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/chess_vision' for CMake config files
+[2.092s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/chess_vision/lib'
+[2.092s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/chess_vision/bin'
+[2.092s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/chess_vision/lib/pkgconfig/chess_vision.pc'
+[2.092s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/chess_vision/lib/python3.12/site-packages'
+[2.092s] Level 1:colcon.colcon_core.shell:create_environment_hook('chess_vision', 'pythonpath')
+[2.093s] INFO:colcon.colcon_core.shell:Creating environment hook '/robotics_final_project/ros2_ws/install/chess_vision/share/chess_vision/hook/pythonpath.ps1'
+[2.093s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/robotics_final_project/ros2_ws/install/chess_vision/share/chess_vision/hook/pythonpath.dsv'
+[2.093s] INFO:colcon.colcon_core.shell:Creating environment hook '/robotics_final_project/ros2_ws/install/chess_vision/share/chess_vision/hook/pythonpath.sh'
+[2.095s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/chess_vision/bin'
+[2.095s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(chess_vision)
+[2.095s] INFO:colcon.colcon_core.shell:Creating package script '/robotics_final_project/ros2_ws/install/chess_vision/share/chess_vision/package.ps1'
+[2.096s] INFO:colcon.colcon_core.shell:Creating package descriptor '/robotics_final_project/ros2_ws/install/chess_vision/share/chess_vision/package.dsv'
+[2.097s] INFO:colcon.colcon_core.shell:Creating package script '/robotics_final_project/ros2_ws/install/chess_vision/share/chess_vision/package.sh'
+[2.097s] INFO:colcon.colcon_core.shell:Creating package script '/robotics_final_project/ros2_ws/install/chess_vision/share/chess_vision/package.bash'
+[2.098s] INFO:colcon.colcon_core.shell:Creating package script '/robotics_final_project/ros2_ws/install/chess_vision/share/chess_vision/package.zsh'
+[2.098s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/robotics_final_project/ros2_ws/install/chess_vision/share/colcon-core/packages/chess_vision)
+[2.115s] Level 1:colcon.colcon_core.shell:create_environment_hook('game_state', 'pythonpath_develop')
+[2.116s] INFO:colcon.colcon_core.shell:Creating environment hook '/robotics_final_project/ros2_ws/build/game_state/share/game_state/hook/pythonpath_develop.ps1'
+[2.116s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/robotics_final_project/ros2_ws/build/game_state' returned '0': PYTHONPATH=/robotics_final_project/ros2_ws/build/game_state/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/robotics_final_project/ros2_ws/install/game_state/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /robotics_final_project/ros2_ws/build/game_state/build --no-deps symlink_data
+[2.117s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/robotics_final_project/ros2_ws/build/game_state/share/game_state/hook/pythonpath_develop.dsv'
+[2.118s] INFO:colcon.colcon_core.shell:Creating environment hook '/robotics_final_project/ros2_ws/build/game_state/share/game_state/hook/pythonpath_develop.sh'
+[2.119s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/game_state' for CMake module files
+[2.120s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/game_state' for CMake config files
+[2.120s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/game_state/lib'
+[2.121s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/game_state/bin'
+[2.121s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/game_state/lib/pkgconfig/game_state.pc'
+[2.121s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/game_state/lib/python3.12/site-packages'
+[2.122s] Level 1:colcon.colcon_core.shell:create_environment_hook('game_state', 'pythonpath')
+[2.122s] INFO:colcon.colcon_core.shell:Creating environment hook '/robotics_final_project/ros2_ws/install/game_state/share/game_state/hook/pythonpath.ps1'
+[2.123s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/robotics_final_project/ros2_ws/install/game_state/share/game_state/hook/pythonpath.dsv'
+[2.123s] INFO:colcon.colcon_core.shell:Creating environment hook '/robotics_final_project/ros2_ws/install/game_state/share/game_state/hook/pythonpath.sh'
+[2.125s] Level 1:colcon.colcon_core.environment:checking '/robotics_final_project/ros2_ws/install/game_state/bin'
+[2.125s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(game_state)
+[2.125s] INFO:colcon.colcon_core.shell:Creating package script '/robotics_final_project/ros2_ws/install/game_state/share/game_state/package.ps1'
+[2.126s] INFO:colcon.colcon_core.shell:Creating package descriptor '/robotics_final_project/ros2_ws/install/game_state/share/game_state/package.dsv'
+[2.127s] INFO:colcon.colcon_core.shell:Creating package script '/robotics_final_project/ros2_ws/install/game_state/share/game_state/package.sh'
+[2.128s] INFO:colcon.colcon_core.shell:Creating package script '/robotics_final_project/ros2_ws/install/game_state/share/game_state/package.bash'
+[2.128s] INFO:colcon.colcon_core.shell:Creating package script '/robotics_final_project/ros2_ws/install/game_state/share/game_state/package.zsh'
+[2.129s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/robotics_final_project/ros2_ws/install/game_state/share/colcon-core/packages/game_state)
+[2.129s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:closing loop
+[2.130s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:loop closed
+[2.130s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete finished with '0'
+[2.130s] DEBUG:colcon.colcon_core.event_reactor:joining thread
+[2.136s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.notify_send': Could not find 'notify-send'
+[2.137s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.terminal_notifier': Not used on non-Darwin systems
+[2.137s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.win32': Not used on non-Windows systems
+[2.137s] INFO:colcon.colcon_notification.desktop_notification:Sending desktop notification using 'notify2'
+[2.141s] DEBUG:colcon.colcon_notification.desktop_notification.notify2:Failed to initialize notify2: org.freedesktop.DBus.Error.Spawn.ExecFailed: /usr/bin/dbus-launch terminated abnormally without any error message
+[2.141s] DEBUG:colcon.colcon_core.event_reactor:joined thread
+[2.142s] INFO:colcon.colcon_core.shell:Creating prefix script '/robotics_final_project/ros2_ws/install/local_setup.ps1'
+[2.143s] INFO:colcon.colcon_core.shell:Creating prefix util module '/robotics_final_project/ros2_ws/install/_local_setup_util_ps1.py'
+[2.145s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/robotics_final_project/ros2_ws/install/setup.ps1'
+[2.147s] INFO:colcon.colcon_core.shell:Creating prefix script '/robotics_final_project/ros2_ws/install/local_setup.sh'
+[2.148s] INFO:colcon.colcon_core.shell:Creating prefix util module '/robotics_final_project/ros2_ws/install/_local_setup_util_sh.py'
+[2.150s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/robotics_final_project/ros2_ws/install/setup.sh'
+[2.152s] INFO:colcon.colcon_core.shell:Creating prefix script '/robotics_final_project/ros2_ws/install/local_setup.bash'
+[2.152s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/robotics_final_project/ros2_ws/install/setup.bash'
+[2.154s] INFO:colcon.colcon_core.shell:Creating prefix script '/robotics_final_project/ros2_ws/install/local_setup.zsh'
+[2.155s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/robotics_final_project/ros2_ws/install/setup.zsh'

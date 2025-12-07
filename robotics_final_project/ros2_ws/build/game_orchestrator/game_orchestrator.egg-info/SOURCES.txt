@@ -1,0 +1,12 @@
+package.xml
+setup.cfg
+setup.py
+game_orchestrator/__init__.py
+game_orchestrator/orchestrator.py
+game_orchestrator.egg-info/PKG-INFO
+game_orchestrator.egg-info/SOURCES.txt
+game_orchestrator.egg-info/dependency_links.txt
+game_orchestrator.egg-info/requires.txt
+game_orchestrator.egg-info/top_level.txt
+game_orchestrator.egg-info/zip-safe
+resource/game_orchestrator

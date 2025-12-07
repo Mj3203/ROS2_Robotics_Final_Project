@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Image, String # ROS2 message types
+from sensor_msgs.msg import Image # ROS2 message types
+from std_msgs.msg import String # ROS2 message types
 from cv_bridge import CvBridge # Bridge to convert between ROS and OpenCV images
 import cv2 # OpenCV for image processing
 import numpy as np
@@ -105,16 +106,19 @@ class HomographyProcessor(Node):
     def image_callback(self, data):
         try:
             # Convert ROS Image message to OpenCV image
-            raw_image = self.bridge.imgmsg_to_cv2(data, encoding='bgr8')
+            raw_image = self.bridge.imgmsg_to_cv2(data, 'bgr8')
         except Exception as e:
             self.get_logger().error(f"Error converting ROS Image to OpenCV image: {e}")
             return
-
+        
         processed_image = self.perform_homography(raw_image)
 
         if processed_image is not None:
+            cv2.imshow("Homography Output", processed_image)
+            cv2.waitKey(1)
+            
             # Convert the processed OpenCV image back to ROS Image message
-            processed_ros_image = self.bridge.cv2_to_imgmsg(processed_image, desired_encoding='bgr8')
+            processed_ros_image = self.bridge.cv2_to_imgmsg(processed_image, encoding='bgr8')
             
             # Publish the processed ROS Image message
             self.publisher_.publish(processed_ros_image)

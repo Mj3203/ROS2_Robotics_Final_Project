@@ -1,0 +1,20 @@
+running develop
+running egg_info
+creating game_orchestrator.egg-info
+writing game_orchestrator.egg-info/PKG-INFO
+writing dependency_links to game_orchestrator.egg-info/dependency_links.txt
+writing requirements to game_orchestrator.egg-info/requires.txt
+writing top-level names to game_orchestrator.egg-info/top_level.txt
+writing manifest file 'game_orchestrator.egg-info/SOURCES.txt'
+reading manifest file 'game_orchestrator.egg-info/SOURCES.txt'
+writing manifest file 'game_orchestrator.egg-info/SOURCES.txt'
+running build_ext
+Creating /robotics_final_project/ros2_ws/install/game_orchestrator/lib/python3.12/site-packages/game-orchestrator.egg-link (link to .)
+
+Installed /robotics_final_project/ros2_ws/build/game_orchestrator
+running symlink_data
+creating /robotics_final_project/ros2_ws/install/game_orchestrator/share/ament_index
+creating /robotics_final_project/ros2_ws/install/game_orchestrator/share/ament_index/resource_index
+creating /robotics_final_project/ros2_ws/install/game_orchestrator/share/ament_index/resource_index/packages
+symbolically linking /robotics_final_project/ros2_ws/build/game_orchestrator/resource/game_orchestrator -> /robotics_final_project/ros2_ws/install/game_orchestrator/share/ament_index/resource_index/packages
+symbolically linking /robotics_final_project/ros2_ws/build/game_orchestrator/package.xml -> /robotics_final_project/ros2_ws/install/game_orchestrator/share/game_orchestrator

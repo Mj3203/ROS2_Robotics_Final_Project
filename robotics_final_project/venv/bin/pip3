@@ -1,4 +1,4 @@
-#!/robotics_final_project/ros2_ws/venv/bin/python3
+#!/robotics_final_project/venv/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys

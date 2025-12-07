@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Image, String # ROS2 message types
+from sensor_msgs.msg import Image # ROS2 message types
+from std_msgs.msg import String # ROS2 message types
 from cv_bridge import CvBridge # Bridge to convert between ROS and OpenCV images
 import cv2 # OpenCV for image processing
 
@@ -27,16 +28,21 @@ class Camera_Feed(Node):
     def timer_callback(self):
         ret, frame = self.cap.read()
 
-        if ret:
-            # Convert the OpenCV image (frame or a numpy array) to a ROS Image message
-            # OpenCV uses BGR format by default
-            ros_image = self.bridge.cv2_to_imgmsg(frame, desired_encoding='bgr8')
-            
-            # Publish the ROS Image message
-            self.publisher_.publish(ros_image)
-            self.get_logger().info('Published video frame')
-        else:
+
+        if not ret:
             self.get_logger().error('Failed to capture video frame')
+            return
+        
+        #cv2.imshow("Camera Feed", frame)
+        #cv2.waitKey(1)
+        
+        # Convert the OpenCV image (frame or a numpy array) to a ROS Image message
+        # OpenCV uses BGR format by default
+        ros_image = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8')
+            
+        # Publish the ROS Image message
+        self.publisher_.publish(ros_image)
+        self.get_logger().info('Published video frame')
     
     def destroy_node(self):
         # Release the video capture object when destroying the node

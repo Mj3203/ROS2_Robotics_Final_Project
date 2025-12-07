@@ -1,0 +1,20 @@
+running develop
+running egg_info
+creating chess_ai.egg-info
+writing chess_ai.egg-info/PKG-INFO
+writing dependency_links to chess_ai.egg-info/dependency_links.txt
+writing requirements to chess_ai.egg-info/requires.txt
+writing top-level names to chess_ai.egg-info/top_level.txt
+writing manifest file 'chess_ai.egg-info/SOURCES.txt'
+reading manifest file 'chess_ai.egg-info/SOURCES.txt'
+writing manifest file 'chess_ai.egg-info/SOURCES.txt'
+running build_ext
+Creating /robotics_final_project/ros2_ws/install/chess_ai/lib/python3.12/site-packages/chess-ai.egg-link (link to .)
+
+Installed /robotics_final_project/ros2_ws/build/chess_ai
+running symlink_data
+creating /robotics_final_project/ros2_ws/install/chess_ai/share/ament_index
+creating /robotics_final_project/ros2_ws/install/chess_ai/share/ament_index/resource_index
+creating /robotics_final_project/ros2_ws/install/chess_ai/share/ament_index/resource_index/packages
+symbolically linking /robotics_final_project/ros2_ws/build/chess_ai/resource/chess_ai -> /robotics_final_project/ros2_ws/install/chess_ai/share/ament_index/resource_index/packages
+symbolically linking /robotics_final_project/ros2_ws/build/chess_ai/package.xml -> /robotics_final_project/ros2_ws/install/chess_ai/share/chess_ai

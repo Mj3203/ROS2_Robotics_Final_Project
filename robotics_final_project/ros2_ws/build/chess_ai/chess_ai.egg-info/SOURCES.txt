@@ -1,0 +1,12 @@
+package.xml
+setup.cfg
+setup.py
+chess_ai/ChessAINode.py
+chess_ai/__init__.py
+chess_ai.egg-info/PKG-INFO
+chess_ai.egg-info/SOURCES.txt
+chess_ai.egg-info/dependency_links.txt
+chess_ai.egg-info/requires.txt
+chess_ai.egg-info/top_level.txt
+chess_ai.egg-info/zip-safe
+resource/chess_ai

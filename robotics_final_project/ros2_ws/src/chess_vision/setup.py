@@ -24,7 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'camera_publisher = chess_vision.camera_publisher:main',
+            'camera_feed = chess_vision.camera_feed:main',
             'homography_processor = chess_vision.homography_processor:main',
         ],
     },
