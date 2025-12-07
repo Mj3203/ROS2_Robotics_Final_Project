@@ -28,8 +28,7 @@ class Camera_Feed(Node):
     def timer_callback(self):
         ret, frame = self.cap.read()
 
-
-        if not ret:
+        if not ret or frame is None:
             self.get_logger().error('Failed to capture video frame')
             return
         
