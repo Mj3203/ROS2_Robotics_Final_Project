@@ -1,2 +1,0 @@
-[console_scripts]
-game_state_processor = game_state.game_state_processor:main

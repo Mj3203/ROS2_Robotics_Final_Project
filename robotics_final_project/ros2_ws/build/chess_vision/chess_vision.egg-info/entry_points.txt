@@ -1,3 +1,0 @@
-[console_scripts]
-camera_feed = chess_vision.camera_feed:main
-homography_processor = chess_vision.homography_processor:main
