@@ -1,1 +1,1 @@
-chess_vision
+chess_vision_pkg

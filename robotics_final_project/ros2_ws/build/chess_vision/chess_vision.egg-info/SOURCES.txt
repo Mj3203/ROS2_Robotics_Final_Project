@@ -8,9 +8,9 @@ setup.py
 ../../build/chess_vision/chess_vision.egg-info/requires.txt
 ../../build/chess_vision/chess_vision.egg-info/top_level.txt
 ../../build/chess_vision/chess_vision.egg-info/zip-safe
-chess_vision/__init__.py
-chess_vision/camera_feed.py
-chess_vision/homography_processor.py
+chess_vision_pkg/__init__.py
+chess_vision_pkg/camera_feed_node.py
+chess_vision_pkg/homography_processor_node.py
 resource/chess_vision
 test/test_copyright.py
 test/test_flake8.py
