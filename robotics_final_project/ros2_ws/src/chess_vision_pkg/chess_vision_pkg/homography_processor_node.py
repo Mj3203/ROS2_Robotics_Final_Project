@@ -85,8 +85,8 @@ aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_5X5_250)
 
 class HomographyProcessor(Node):
     def __init__(self):
-        # Initialize the Node with the name 'homography_processor'
-        super().__init__('homography_processor') 
+        # Initialize the Node with the name 'homography_processor_node'
+        super().__init__('homography_processor_node') 
         
         # Initialize the CvBridge
         self.bridge = CvBridge()
@@ -135,7 +135,7 @@ class HomographyProcessor(Node):
             self.get_logger().warning("4 Aruco markers were not detected.")
             return None
         
-        aruco_marker_size = 0.025 #mm
+        aruco_marker_size = 0.020 #mm
         obj_points = get_chessboard_corner_obj_points(aruco_marker_size)
 
         # Reorder detected markers based on their IDs numerically
@@ -194,14 +194,14 @@ class HomographyProcessor(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    homography_processor = HomographyProcessor()
+    homography_processor_node = HomographyProcessor()
 
     try:
-        rclpy.spin(homography_processor)
+        rclpy.spin(homography_processor_node)
     except KeyboardInterrupt:
         pass
 
-    homography_processor.destroy_node()
+    homography_processor_node.destroy_node()
     rclpy.shutdown()
 
 if __name__ == '__main__':

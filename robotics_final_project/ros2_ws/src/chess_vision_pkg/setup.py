@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'chess_vision'
+package_name = 'chess_vision_pkg'
 
 setup(
     name=package_name,
@@ -24,8 +24,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'camera_feed = chess_vision.camera_feed:main',
-            'homography_processor = chess_vision.homography_processor:main',
+            'camera_feed = chess_vision_pkg.camera_feed_node:main',
+            'homography_processor = chess_vision_pkg.homography_processor_node:main',
         ],
     },
 )

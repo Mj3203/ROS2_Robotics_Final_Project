@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'piece_detection'
+package_name = 'piece_detection_pkg'
 
 setup(
     name=package_name,
@@ -26,7 +26,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'piece_detection = piece_detection_pkg.get_board_state:main',
+            'scan_board = piece_detection_pkg.scan_board_node:main',
             'client = piece_detection_pkg.client_node:main'
         ],
     },

@@ -24,6 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'game_operation = game_operation_pkg.game_operation_node:main',
         ],
     },
 )

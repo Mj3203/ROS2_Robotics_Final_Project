@@ -3,9 +3,10 @@ import rclpy
 from rclpy.node import Node
 from rclpy.task import Future
 import time
+import select # 💡 New import for checking terminal input
+import sys # 💡 New import for stdin/stdout
 
 # --- ROS2 Message Types --- #
-from sensor_msgs.msg import Image
 from std_msgs.msg import String
 
 # --- Custom Service Types --- #
@@ -22,10 +23,7 @@ class GameOperation(Node):
         # --- Service Clients --- #
         self.piece_detection_client = self.create_client(GetBoardState, 'get_board_state')
         self.chess_ai_client = self.create_client(GetBestMove, 'get_best_move')
-        self.pick_and_place_client = self.create_client(MoveRobot, 'move_robot')
-
-        # --- Topic Subscriber --- #
-        self.button_subscriber = self.create_subscription(String, 'button_feed', self.button_callback, 10)
+        # self.pick_and_place_client = self.create_client(MoveRobot, 'move_robot') # Commented out
 
         # --- Initializing --- #
         self.wait_for_all_services()
@@ -33,28 +31,28 @@ class GameOperation(Node):
         self.current_board_state = {} 
         self.scan_count = 0
 
+        # --- Timer for Input Check --- #
+        # We replace the button subscriber with a timer that checks the keyboard periodically
+        self.timer = self.create_timer(0.1, self.input_check_timer_callback)
+
         # --- Begin Loop --- #
         self.get_logger().info('Game Operation Node is ready.')
         self.start_initial_move_sequence()
 
     def wait_for_all_services(self):
         self.get_logger().info("Waiting for all services to connect")
-
         self.piece_detection_client.wait_for_service()
         self.chess_ai_client.wait_for_service()
-        self.pick_and_place_client.wait_for_service()
-
-        self.get_logger().info("All services connected")
+        self.get_logger().info("All required services connected (Vision, AI)")
 
     # ====================================================================
     # 1. INITIAL MOVE
     # ====================================================================
     def start_initial_move_sequence(self):
-        self.get_logger().info("Starting initial move")
+        self.get_logger().info("Starting initial move sequence (White's move)")
         self.game_state = "CALLING_INITIAL_MOVE"
         
-        #Keyword "START_GAME" to trigger the initial move on the server
-        request = GetBestMove.Request(player_move="START_GAME") 
+        request = GetBestMove.Request(players_move="START_GAME") 
         self.future = self.chess_ai_client.call_async(request)
         self.future.add_done_callback(self.initial_move_callback)
     
@@ -68,42 +66,28 @@ class GameOperation(Node):
             self.game_state = "ERROR"
             return
             
-        self.get_logger().info(f"Received initial move: {initial_move}. Executing.")
+        self.get_logger().info(f"Received AI initial move: {initial_move}. Executing.")
         
-        #Send to robot
-        self.move_robot(initial_move)
-
-    # ====================================================================
-    # 2. ROBOT EXECUTION
-    # ====================================================================
-    def move_robot(self, move_uci: str):
-        self.get_logger().info(f"Commanding robot to execute move: {move_uci}")
-        self.game_state = "CALLING_ROBOT_SERVICE"
-        
-        request = MoveRobot.Request(best_uci=move_uci)
-        self.future = self.pick_and_place_client.call_async(request)
-        self.future.add_done_callback(self.robot_response_callback)
-
-    def robot_response_callback(self, future: Future):
-        self.game_state = "ROBOT_SERVICE_COMPLETE"
-        try:
-            response = future.result()
-            status_message = response.robot_status_message
-            if "ERROR" in status_message.upper():
-                self.get_logger().error(f"Robot execution failed! Status: {status_message}")
-                self.game_state = "ERROR"
-                return
-        except Exception as e:
-            self.get_logger().error(f'Robot service call failed: {e}')
-            self.game_state = "ERROR"
-            return
-            
-        self.get_logger().info("Robot move complete. Begin first scan")
-        
-        #Begin first scan
+        # After the initial AI move, we are waiting for the human player to move.
         self.scan_count = 1
-        self.game_state = "SCAN_ONE"
+        time.sleep(30)
         self.start_board_scan()
+        self.game_state = "WAITING_FOR_PLAYER_MOVE"
+        self.log_manual_action(initial_move)
+        
+    def log_manual_action(self, move):
+        self.get_logger().info("==============================================")
+        self.get_logger().info(f"ACTION REQUIRED: MANUALLY execute move: {move}")
+        self.get_logger().info("Press ENTER in this terminal when the move is complete.")
+        self.get_logger().info("==============================================")
+
+
+    # ====================================================================
+    # 2. ROBOT EXECUTION (COMMENTED OUT)
+    # ====================================================================
+    # def move_robot(self, move_uci: str): ... (commented out)
+    # def robot_response_callback(self, future: Future): ... (commented out)
+
 
     # ====================================================================
     # 3. BOARD SCANNING
@@ -125,43 +109,55 @@ class GameOperation(Node):
 
         if self.scan_count == 1:
             self.previous_board_state = board_state
-            self.get_logger().info("Scan one completed. Waiting for human player")
+            self.get_logger().info("Scan one completed (Before Player Move). Waiting for human player.")
             self.game_state = "WAITING_FOR_PLAYER_MOVE"
 
         elif self.scan_count == 2:
             self.current_board_state = board_state
-            self.get_logger().info("Scan two completed. Calculating player move.")
+            self.get_logger().info("Scan two completed (After Player Move). Calculating player move.")
             self.calculate_human_move()
 
     # ====================================================================
-    # 4. BUTTON TRIGGER (Manages the two-step scan for human move)
+    # 4. TERMINAL INPUT TRIGGER (Replaces Button Callback)
     # ====================================================================
-    def button_callback(self, msg: String):
-        if self.game_state == "WAITING_FOR_PLAYER_MOVE":
+    def is_key_pressed(self):
+        # 💡 Check if standard input (stdin) has data ready to be read (key press)
+        # Timeout 0.0 means non-blocking check
+        return select.select([sys.stdin], [], [], 0.0) == ([sys.stdin], [], [])
+
+    def input_check_timer_callback(self):
+        if self.game_state == "WAITING_FOR_PLAYER_MOVE" and self.is_key_pressed():
+            
+            # 💡 Read and discard the input (e.g., the Enter key press)
+            sys.stdin.readline() 
+
+            # Trigger the second scan after the human has moved
             self.scan_count = 2
-            self.get_logger().info("Button pressed. Beginning second scan.")
+            self.get_logger().info("Terminal input detected. Beginning second scan (after human move).")
             self.game_state = "SCAN_TWO"
             self.start_board_scan()
-        else:
-            # IGNORE button presses that happen during Robot motion, AI thinking, or setup.
-            self.get_logger().warn(f"Ignoring button signal. Current state: {self.game_state}")
+            
+        elif self.game_state == "WAITING_FOR_PLAYER_MOVE":
+             # Print prompt so the user knows when to hit Enter
+             print(f"\rWaiting for move confirmation... (Press Enter) -> ", end='', flush=True)
+
 
     # ====================================================================
     # 5. MOVE CALCULATION
     # ====================================================================
     def calculate_human_move(self):
         self.game_state = "CALCULATING_PLAYER_MOVE"
-        
+
         prev_key = None
         for key in self.previous_board_state:
             if key not in self.current_board_state:
-                self.get_logger().info(f'{key} is not present in the current board state')
+                self.get_logger().info(f'Piece left square: {key}')
                 prev_key = key
 
         curr_key = None
         for key in self.current_board_state:
             if key not in self.previous_board_state:
-                self.get_logger().info(f'{key} is not present in the previous board state')
+                self.get_logger().info(f'Piece arrived at square: {key}')
                 curr_key = key
 
         if prev_key and curr_key:
@@ -180,7 +176,9 @@ class GameOperation(Node):
     def call_chess_ai(self):
         self.game_state = "CALLING_AI_SERVICE"
 
-        request = GetBestMove.Request(players_move=self.player_move)
+        request = GetBestMove.Request()
+        request.players_move = self.player_move
+        
         self.future = self.chess_ai_client.call_async(request)
         self.future.add_done_callback(self.ai_response_callback)
 
@@ -193,10 +191,16 @@ class GameOperation(Node):
             self.game_state = "ERROR"
             return
             
-        self.get_logger().info(f"AI returned move: {ai_move}.")
+        self.get_logger().info("--------------------------------------------")
+        self.get_logger().info(f"AI Move Found: {ai_move}.")
         
-        #Transition to robot execution
-        self.move_robot(ai_move)
+        # 💡 MANUAL TESTING LOGIC ADDED:
+        self.log_manual_action(ai_move)
+        
+        # After the AI move, reset scan count to 1 and wait for the human to make their move.
+        self.scan_count = 1
+        self.game_state = "WAITING_FOR_PLAYER_MOVE"
+
 
 def main(args=None):
     rclpy.init(args=args)

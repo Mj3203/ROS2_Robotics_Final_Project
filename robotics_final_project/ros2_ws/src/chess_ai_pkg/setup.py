@@ -1,4 +1,5 @@
 from setuptools import find_packages, setup
+import os 
 
 package_name = 'chess_ai_pkg'
 
@@ -10,7 +11,10 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        (os.path.join('share', package_name, 'stockfish_engine'), 
+            ['stockfish_engine/stockfish-ubuntu-x86-64-avx2']),
     ],
+
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='root',
@@ -24,7 +28,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'chess_ai_server = chess_ai_pkg.chess_ai_node:main'
+            'chess_ai = chess_ai_pkg.chess_ai_node:main'
         ],
     },
 )
