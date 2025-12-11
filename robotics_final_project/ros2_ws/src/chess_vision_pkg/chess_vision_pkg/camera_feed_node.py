@@ -14,7 +14,7 @@ class Camera_Feed(Node):
         self.bridge = CvBridge()
 
         # Initialize the video capture object to read from the default camera (0)
-        self.cap = cv2.VideoCapture(0)
+        self.cap = cv2.VideoCapture(1)
 
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)

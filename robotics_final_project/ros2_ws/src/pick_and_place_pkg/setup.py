@@ -24,6 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'pick_and_place = pick_and_place_pkg.pick_and_place_node:main',
         ],
     },
 )

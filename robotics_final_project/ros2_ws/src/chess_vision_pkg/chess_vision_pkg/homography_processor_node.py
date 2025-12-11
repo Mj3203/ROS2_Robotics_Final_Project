@@ -114,8 +114,8 @@ class HomographyProcessor(Node):
         processed_image = self.perform_homography(raw_image)
 
         if processed_image is not None:
-            cv2.imshow("Homography Output", processed_image)
-            cv2.waitKey(1)
+            #cv2.imshow("Homography Output", processed_image)
+            #cv2.waitKey(1)
             
             # Convert the processed OpenCV image back to ROS Image message
             processed_ros_image = self.bridge.cv2_to_imgmsg(processed_image, encoding='bgr8')
@@ -135,7 +135,7 @@ class HomographyProcessor(Node):
             self.get_logger().warning("4 Aruco markers were not detected.")
             return None
         
-        aruco_marker_size = 0.020 #mm
+        aruco_marker_size = 0.040 #mm
         obj_points = get_chessboard_corner_obj_points(aruco_marker_size)
 
         # Reorder detected markers based on their IDs numerically
