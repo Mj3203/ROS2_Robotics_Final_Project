@@ -1,7 +1,7 @@
 from setuptools import find_packages, setup
-
-package_name = 'chess_vision_pkg'
-
+ 
+package_name = 'display_output_pkg'
+ 
 setup(
     name=package_name,
     version='0.0.0',
@@ -15,7 +15,7 @@ setup(
     zip_safe=True,
     maintainer='root',
     maintainer_email='root@todo.todo',
-    description='TODO: Package description',
+    description='Display output package for chessbot — combines raw and processed camera feeds into a single window.',
     license='TODO: License declaration',
     extras_require={
         'test': [
@@ -24,8 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'camera_feed = chess_vision_pkg.camera_feed_node:main',
-            'homography_processor = chess_vision_pkg.homography_processor_node:main',
+            'display_output = display_output_pkg.display_output_node:main',
         ],
     },
 )

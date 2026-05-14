@@ -5,28 +5,29 @@ from std_msgs.msg import String # ROS2 message types
 from cv_bridge import CvBridge # Bridge to convert between ROS and OpenCV images
 import cv2 # OpenCV for image processing
 
-class Camera_Feed(Node):
+class Raw_Camera_Feed(Node):
     def __init__(self):
-        # Initialize the Node with the name 'camera_feed'
-        super().__init__('camera_feed_node') 
+        # Initialize the Node with the name 'raw_camera_feed'
+        super().__init__('raw_camera_feed_node') 
         
         # Initialize the CvBridge
         self.bridge = CvBridge()
 
         # Initialize the video capture object to read from the default camera (0)
-        self.cap = cv2.VideoCapture(1)
+        self.cap = cv2.VideoCapture(0)
 
+        # Set resolution of video feed (optional)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
 
-        # Create a publisher for Image messages on the 'video_feed' topic
-        self.publisher_ = self.create_publisher(Image, 'video_feed', 10) 
+        # Create a publisher for Image messages on the 'raw_camera_feed' topic
+        self.publisher_ = self.create_publisher(Image, 'raw_camera_feed', 10) 
 
         # Set a timer to call the timer_callback function every x amount of seconds
         timer_period = 0.1  
         self.timer = self.create_timer(timer_period, self.timer_callback)
         
-        self.get_logger().info("Camera Feed Node has been started.")
+        self.get_logger().info("Raw Camera Feed Node ready.")
 
     def timer_callback(self):
         ret, frame = self.cap.read()
@@ -35,16 +36,16 @@ class Camera_Feed(Node):
             self.get_logger().error('Failed to capture video frame')
             return
         
-        #cv2.imshow("Camera Feed", frame)
-        #cv2.waitKey(1)
+        cv2.imshow("Raw Camera Feed", frame)
+        cv2.waitKey(1)
         
         # Convert the OpenCV image (frame or a numpy array) to a ROS Image message
         # OpenCV uses BGR format by default
-        ros_image = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8')
+        raw_camera_feed = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8')
             
         # Publish the ROS Image message
-        self.publisher_.publish(ros_image)
-        self.get_logger().info('Published video frame')
+        self.publisher_.publish(raw_camera_feed)
+        self.get_logger().info('Publishing raw camera feed')
     
     def destroy_node(self):
         # Release the video capture object when destroying the node
@@ -53,17 +54,17 @@ class Camera_Feed(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    camera_feed_node = Camera_Feed()
+    raw_camera_feed_node = Raw_Camera_Feed()
 
     # Node runs indefinitely until interrupted
-    # Ctrl+C stops the timer and shuts down the node rather than crashes
+    # Ctrl+C stops the timer and shuts down the node
     try:
-        rclpy.spin(camera_feed_node)
+        rclpy.spin(raw_camera_feed_node)
     except KeyboardInterrupt:
         pass
     
     # Destroy the node explicitly
-    camera_feed_node.destroy_node()
+    raw_camera_feed_node.destroy_node()
     rclpy.shutdown()
 
 if __name__ == '__main__':
