@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'piece_detection_pkg'
+package_name = 'object_detection_pkg'
 
 setup(
     name=package_name,
@@ -11,7 +11,7 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         (f'share/{package_name}/trained_models', 
-         ['piece_detection_pkg/trained_models/best.pt']),
+         ['object_detection_pkg/trained_models/best.pt']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -26,8 +26,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'scan_board = piece_detection_pkg.scan_board_node:main',
-            'client = piece_detection_pkg.client_node:main'
+            'scan_and_detect = object_detection_pkg.scan_and_detect_node:main',
+            'client = object_detection_pkg.client_node:main'
         ],
     },
 )

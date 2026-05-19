@@ -9,20 +9,20 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from ultralytics import YOLO
 from ament_index_python.packages import get_package_share_directory
-from object_detection_pkg.srv import GetBoardState
+from custom_interface.srv import GetBoardState
 
 
-class ScanBoard(Node):
+class Scan_And_Detect(Node):
 
     def __init__(self):
-        super().__init__('chess_piece_detection_node')
+        super().__init__('scan_and_detect_node')
         self.image_subscriber = self.create_subscription(Image, 'processed_camera_feed', self.image_callback, 10)
         self.publisher_ = self.create_publisher(Image, 'live_detection_feed', 10)
         self.srv = self.create_service(GetBoardState, 'get_board_state', self.get_board_state_callback)
         self.timer = self.create_timer(0.1, self.timer_callback)
         self.setup_cv()
         self.setup_yolo()
-        self.get_logger().info('Chess Piece Detection Node is ready.')
+        self.get_logger().info('Scan and Detect Node is ready.')
 
     def setup_cv(self):
         self.bridge = CvBridge()
@@ -124,12 +124,12 @@ class ScanBoard(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    chess_piece_detection_node = ScanBoard()
+    scan_and_detect_node = Scan_And_Detect()
     try:
-        rclpy.spin(chess_piece_detection_node)
+        rclpy.spin(scan_and_detect_node)
     except KeyboardInterrupt:
         pass
-    chess_piece_detection_node.destroy_node()
+    scan_and_detect_node.destroy_node()
     rclpy.shutdown()
 
 if __name__ == '__main__':
