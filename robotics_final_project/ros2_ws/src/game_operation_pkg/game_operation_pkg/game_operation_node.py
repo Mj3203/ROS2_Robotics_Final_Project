@@ -4,6 +4,7 @@ import select
 import sys
 from rclpy.node import Node
 from rclpy.task import Future
+from std_msgs.msg import String
 from custom_interface.srv import GetBoardState, GetBestMove, ValidateMove, MoveRobot
 
 
@@ -14,6 +15,7 @@ class GameOperation(Node):
         self.piece_detection_client = self.create_client(GetBoardState, 'get_board_state')
         self.chess_ai_client = self.create_client(GetBestMove, 'get_best_move')
         self.validate_move_client = self.create_client(ValidateMove, 'validate_move')
+        self.game_status_pub = self.create_publisher(String, 'game_status_feed', 10)
         self.timer = self.create_timer(0.1, self.input_check_timer_callback)
         self.setup_game()
         self.wait_for_all_services()
@@ -23,6 +25,8 @@ class GameOperation(Node):
     def setup_game(self):
         self.game_state = "IDLE"
         self.current_board_state = {}
+        self.human_move = ""
+        self.move_status = ""
         robot_color = input("Is the robot WHITE or BLACK? (W/B): ").strip().upper()
         self.robot_color = "WHITE" if robot_color == "W" else "BLACK"
 
@@ -33,6 +37,15 @@ class GameOperation(Node):
         self.validate_move_client.wait_for_service()
         self.get_logger().info("All services connected.")
 
+    def publish_status(self):
+        msg = String()
+        msg.data = json.dumps({
+            "game_state": self.game_state,
+            "human_move": self.human_move,
+            "move_status": self.move_status
+        })
+        self.game_status_pub.publish(msg)
+
     def start_game(self):
         if self.robot_color == "WHITE":
             self.get_logger().info("Robot is WHITE. Requesting first move from AI.")
@@ -40,6 +53,7 @@ class GameOperation(Node):
         else:
             self.get_logger().info("Robot is BLACK. Waiting for human to move first.")
             self.game_state = "WAITING_FOR_PLAYER_MOVE"
+            self.publish_status()
 
     def is_key_pressed(self):
         return select.select([sys.stdin], [], [], 0.0) == ([sys.stdin], [], [])
@@ -50,11 +64,15 @@ class GameOperation(Node):
 
             if self.game_state == "WAITING_FOR_HUMAN_TO_EXECUTE_AI_MOVE":
                 self.get_logger().info("ENTER detected → Human completed AI move. Scanning board.")
+                self.game_state = "SCANNING"
+                self.publish_status()
                 self.scan_board()
                 return
 
             if self.game_state == "WAITING_FOR_PLAYER_MOVE":
                 self.get_logger().info("ENTER detected → Human completed their move. Scanning board.")
+                self.game_state = "SCANNING"
+                self.publish_status()
                 self.scan_board()
                 return
 
@@ -66,6 +84,7 @@ class GameOperation(Node):
 
     def scan_board(self):
         self.game_state = "SCANNING"
+        self.publish_status()
         request = GetBoardState.Request(request_message="Requesting Board State")
         self.future = self.piece_detection_client.call_async(request)
         self.future.add_done_callback(self.board_scan_callback)
@@ -78,12 +97,14 @@ class GameOperation(Node):
         except Exception as e:
             self.get_logger().error(f'Board scan failed: {e}')
             self.game_state = "ERROR"
+            self.publish_status()
             return
 
         self.call_validate_move()
 
     def call_validate_move(self):
         self.game_state = "VALIDATING_MOVE"
+        self.publish_status()
         request = ValidateMove.Request()
         request.board_json = json.dumps(self.current_board_state)
         self.future = self.validate_move_client.call_async(request)
@@ -96,18 +117,26 @@ class GameOperation(Node):
         except Exception as e:
             self.get_logger().error(f'Validate move service call failed: {e}')
             self.game_state = "ERROR"
+            self.publish_status()
             return
+
+        self.human_move = validated_move
 
         if validated_move == "INVALID":
             self.get_logger().error("Invalid move detected. Asking human to redo.")
             self.game_state = "WAITING_FOR_PLAYER_MOVE"
+            self.move_status = "INVALID"
+            self.publish_status()
             return
 
+        self.move_status = "VALID"
         self.get_logger().info(f"Valid human move: {validated_move}. Calling AI.")
+        self.publish_status()
         self.call_chess_ai(validated_move)
 
     def call_chess_ai(self, players_move):
         self.game_state = "CALLING_AI"
+        self.publish_status()
         request = GetBestMove.Request()
         request.players_move = players_move
         self.future = self.chess_ai_client.call_async(request)
@@ -120,6 +149,7 @@ class GameOperation(Node):
         except Exception as e:
             self.get_logger().error(f'AI service call failed: {e}')
             self.game_state = "ERROR"
+            self.publish_status()
             return
 
         self.get_logger().info(f"AI move received: {ai_move}.")
@@ -128,6 +158,7 @@ class GameOperation(Node):
     def move_robot_with_human_assistance(self, move_uci: str):
         self.log_manual_action(move_uci)
         self.game_state = "WAITING_FOR_HUMAN_TO_EXECUTE_AI_MOVE"
+        self.publish_status()
 
     def log_manual_action(self, move):
         self.get_logger().info("==============================================")
