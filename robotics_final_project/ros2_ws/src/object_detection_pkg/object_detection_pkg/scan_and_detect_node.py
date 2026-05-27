@@ -84,7 +84,8 @@ class Scan_And_Detect(Node):
             file = int(cx // square_x_length)
             rank = int(cy // square_y_length)
             fen_square = file_index[file] + rank_index[rank]
-            board_dict[fen_square] = name
+            color, piece_type = name.split(" ")
+            board_dict[fen_square] = {"type": piece_type, "color": color}
 
         return board_dict
 
