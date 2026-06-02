@@ -27,7 +27,6 @@ setup(
     entry_points={
         'console_scripts': [
             'scan_and_detect = object_detection_pkg.scan_and_detect_node:main',
-            'client = object_detection_pkg.client_node:main'
         ],
     },
 )
