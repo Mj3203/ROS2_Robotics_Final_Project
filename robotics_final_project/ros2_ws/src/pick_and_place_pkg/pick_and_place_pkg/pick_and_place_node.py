@@ -2,6 +2,7 @@ import time
 import threading
 import math
 import os
+import subprocess
 import rclpy
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
@@ -10,9 +11,9 @@ from pymoveit2 import MoveIt2
 from pymoveit2.gripper_interface import GripperInterface
 from custom_interface.srv import MoveRobot
 from pick_and_place_pkg.constants import (
-    SQUARE_COORDS_M, BOARD_Z, HOVER_ABOVE_BOARD_M,
+    SQUARE_COORDS_M, BOARD_Z, HOVER_ABOVE_BOARD_M, CENTER_HOVER_ABOVE_BOARD_M,
     PLACE_Z_OFFSET, TOP_DOWN, SOLENOID_OFF_DELAY_DEFAULT,
-    make_pose, square_center_in_world
+    make_pose, square_center_in_world, compute_board_center
 )
 from pick_and_place_pkg.arduino_client import ArduinoSerialClient, SERIAL_AVAILABLE, list_ports
 
@@ -43,6 +44,7 @@ class PickAndPlaceNode(Node):
         self.declare_parameter("tune_square", "b3")
         self.j_home = [0.0] * 6
         self.gripper_closed = False
+        self.gripper_locked = False
 
     def setup_moveit(self):
         self.moveit2 = MoveIt2(
@@ -127,6 +129,59 @@ class PickAndPlaceNode(Node):
     #     except Exception as e:
     #         self.get_logger().error(f"Failed to publish button event: {e}")
 
+    def wait_for_moveit(self, timeout_s=60):
+        self.get_logger().info(f"Waiting up to {timeout_s}s for planner and joint states...")
+
+        start = time.time()
+        planner_ready = False
+
+        while time.time() - start < timeout_s:
+            try:
+                out = subprocess.run(
+                    ["ros2", "service", "list"],
+                    capture_output=True, text=True, timeout=3
+                ).stdout
+            except subprocess.TimeoutExpired:
+                out = ""
+
+            if "/plan_kinematic_path" in out:
+                planner_ready = True
+                break
+
+            time.sleep(0.5)
+
+        if not planner_ready:
+            self.get_logger().warn("Timed out waiting for planner service.")
+
+        expected_joints = ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"]
+        joints_ready = False
+        start2 = time.time()
+
+        while time.time() - start2 < timeout_s:
+            try:
+                joint_out = subprocess.run(
+                    ["ros2", "topic", "echo", "/joint_states", "--once"],
+                    capture_output=True, text=True, timeout=3
+                ).stdout
+            except subprocess.TimeoutExpired:
+                joint_out = ""
+
+            if "name:" in joint_out and "position:" in joint_out:
+                if all(j in joint_out for j in expected_joints):
+                    joints_ready = True
+                    break
+
+            time.sleep(0.3)
+
+        if not joints_ready:
+            self.get_logger().warn("Timed out waiting for joint states.")
+
+        ready = planner_ready and joints_ready
+        if ready:
+            self.get_logger().info("Planner and joint states ready.")
+
+        return ready
+
     def move_to_joints(self, joints) -> bool:
         try:
             self.get_logger().info(f"Moving to joints: {[f'{p:.3f}' for p in joints]}")
@@ -170,6 +225,9 @@ class PickAndPlaceNode(Node):
             return False
 
     def open_gripper(self):
+        if self.gripper_locked:
+            self.get_logger().warn("Cannot open gripper: gripper is locked.")
+            return False
         if self.gripper is None:
             self.get_logger().warn("Cannot open gripper: gripper interface is missing.")
             return False
@@ -195,6 +253,24 @@ class PickAndPlaceNode(Node):
         except Exception as e:
             self.get_logger().warn(f"Gripper close failed: {e}")
             return False
+
+    def lock_gripper(self):
+        if self.gripper is None:
+            self.get_logger().warn("Cannot lock gripper: gripper interface is missing.")
+            return
+
+        def blocked_open(*args, **kwargs):
+            self.get_logger().warn("Gripper open blocked — gripper is locked.")
+            return False
+
+        try:
+            if not hasattr(self.gripper, "original_open"):
+                self.gripper.original_open = getattr(self.gripper, "open", None)
+            self.gripper.open = blocked_open
+            self.gripper_locked = True
+            self.get_logger().info("Gripper locked successfully.")
+        except Exception as e:
+            self.get_logger().warn(f"Failed to lock gripper: {e}")
 
     def activate_solenoid(self):
         try:
@@ -341,6 +417,124 @@ class PickAndPlaceNode(Node):
         response.robot_status_message = "SUCCESS" if success else "ERROR"
         return response
 
+    def task_tune(self):
+        ready = self.wait_for_moveit(timeout_s=60)
+        if not ready:
+            self.get_logger().warn("Continuing tuning despite incomplete readiness.")
+
+        tune_mode = self.get_parameter("tune_mode").get_parameter_value().string_value.lower()
+
+        if tune_mode == "home":
+            self.get_logger().info("[TUNE] Moving to home position.")
+            if not self.move_to_joints(self.j_home):
+                self.get_logger().error("[TUNE] Failed to move to home position.")
+            return
+
+        if tune_mode == "hold":
+            self.get_logger().info("[TUNE] Closing and locking gripper.")
+            if not self.close_gripper():
+                self.get_logger().warn("[TUNE] Gripper close failed.")
+            self.lock_gripper()
+            self.get_logger().info("[TUNE] Gripper is now locked.")
+            return
+
+        if tune_mode == "open":
+            self.get_logger().info("[TUNE] Opening gripper.")
+            if not self.open_gripper():
+                self.get_logger().warn("[TUNE] Gripper open failed.")
+            return
+
+        center_x, center_y, center_z = compute_board_center()
+        center_hover_z = center_z + CENTER_HOVER_ABOVE_BOARD_M
+        center_hover_pose = make_pose(center_x, center_y, center_hover_z, *TOP_DOWN)
+
+        if tune_mode == "center":
+            self.get_logger().info(f"[TUNE] Moving to center hover at x={center_x:.3f}, y={center_y:.3f}, z={center_hover_z:.3f}")
+            if not self.plan_and_execute_pose(center_hover_pose, cartesian=False):
+                self.get_logger().warn("[TUNE] Joint space move failed — trying cartesian.")
+                if not self.plan_and_execute_pose(center_hover_pose, cartesian=True):
+                    self.get_logger().error("[TUNE] Failed to reach center hover.")
+            else:
+                self.get_logger().info("[TUNE] Reached center hover successfully.")
+            return
+
+        if tune_mode in ("square", "lift"):
+            tune_square = self.get_parameter("tune_square").get_parameter_value().string_value.lower()
+
+            if not tune_square or tune_square not in SQUARE_COORDS_M:
+                self.get_logger().error(f"[TUNE] Invalid or missing tune_square: '{tune_square}'.")
+                return
+
+            square_center = square_center_in_world(tune_square)
+            hover_z = BOARD_Z + HOVER_ABOVE_BOARD_M
+            square_hover = make_pose(square_center.position.x, square_center.position.y, hover_z, *TOP_DOWN)
+            square_pick = make_pose(square_center.position.x, square_center.position.y, BOARD_Z + PLACE_Z_OFFSET, *TOP_DOWN)
+
+            self.get_logger().info(f"[TUNE] Moving to hover above {tune_square} at x={square_hover.position.x:.3f}, y={square_hover.position.y:.3f}, z={square_hover.position.z:.3f}")
+
+            if not self.plan_and_execute_pose(square_hover, cartesian=False):
+                self.get_logger().warn("[TUNE] Hover joint move failed — trying offsets.")
+                success = False
+                for dx, dy in [(0, 0), (0.01, 0), (-0.01, 0), (0, 0.01), (0, -0.01)]:
+                    trial = make_pose(square_hover.position.x + dx, square_hover.position.y + dy, square_hover.position.z, *TOP_DOWN)
+                    if self.plan_and_execute_pose(trial, cartesian=False):
+                        success = True
+                        break
+                if not success:
+                    if not self.plan_and_execute_pose(square_hover, cartesian=True):
+                        self.get_logger().error("[TUNE] Failed to reach hover above square.")
+                        return
+
+            time.sleep(0.08)
+
+            if tune_mode == "square":
+                self.get_logger().info(f"[TUNE] Descending to board level at {tune_square}.")
+                if not self.plan_and_execute_pose(square_pick, cartesian=True):
+                    self.get_logger().warn("[TUNE] Direct descent failed — trying staged descent.")
+                    ok_descend = True
+                    for i in range(1, 5):
+                        z_step = square_hover.position.z + (square_pick.position.z - square_hover.position.z) * (i / 4)
+                        step_pose = make_pose(square_pick.position.x, square_pick.position.y, z_step, *TOP_DOWN)
+                        if not self.plan_and_execute_pose(step_pose, cartesian=True):
+                            ok_descend = False
+                            break
+                        time.sleep(0.05)
+                    if not ok_descend:
+                        self.get_logger().error("[TUNE] Staged descent failed.")
+                        return
+                self.get_logger().info(f"[TUNE] Reached board level at {tune_square}.")
+                return
+
+            if tune_mode == "lift":
+                self.get_logger().info(f"[TUNE] Descending to board level at {tune_square}.")
+                if not self.plan_and_execute_pose(square_pick, cartesian=True):
+                    self.get_logger().warn("[TUNE] Direct descent failed — trying staged descent.")
+                    ok_descend = True
+                    for i in range(1, 4):
+                        z_step = square_hover.position.z + (square_pick.position.z - square_hover.position.z) * (i / 3)
+                        step_pose = make_pose(square_pick.position.x, square_pick.position.y, z_step, *TOP_DOWN)
+                        if not self.plan_and_execute_pose(step_pose, cartesian=True):
+                            ok_descend = False
+                            break
+                        time.sleep(0.05)
+                    if not ok_descend:
+                        self.get_logger().error("[TUNE] Staged descent failed.")
+                        return
+
+                time.sleep(0.08)
+
+                self.get_logger().info(f"[TUNE] Lifting back to hover above {tune_square}.")
+                if not self.plan_and_execute_pose(square_hover, cartesian=True):
+                    self.get_logger().warn("[TUNE] Cartesian lift failed — trying joint space.")
+                    if not self.plan_and_execute_pose(square_hover, cartesian=False):
+                        self.get_logger().error("[TUNE] Failed to lift back to hover.")
+                        return
+
+                self.get_logger().info(f"[TUNE] Lift complete at {tune_square}.")
+                return
+
+        self.get_logger().error(f"[TUNE] Unknown tune_mode '{tune_mode}'. Valid modes: home, hold, open, center, square, lift.")
+
     def destroy_node(self):
         if self.arduino:
             self.arduino.stop_serial_connection()
@@ -358,8 +552,7 @@ def main(args=None):
 
     try:
         if task == "tune":
-            from pick_and_place_pkg.tune import task_tune
-            task_tune(node)
+            node.task_tune()
         elif task == "home":
             node.move_to_joints(node.j_home)
         else:
