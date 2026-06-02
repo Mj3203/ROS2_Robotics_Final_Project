@@ -5,14 +5,14 @@ import sys
 from rclpy.node import Node
 from rclpy.task import Future
 from std_msgs.msg import String
-from custom_interface.srv import GetBoardState, GetBestMove, ValidateMove, MoveRobot
+from custom_interface.srv import ScanBoard, GetBestMove, ValidateMove, MoveRobot
 
 
 class GameOperation(Node):
 
     def __init__(self):
         super().__init__('game_operation_node')
-        self.piece_detection_client = self.create_client(GetBoardState, 'get_board_state')
+        self.piece_detection_client = self.create_client(ScanBoard, 'scan_board')
         self.chess_ai_client = self.create_client(GetBestMove, 'get_best_move')
         self.validate_move_client = self.create_client(ValidateMove, 'validate_move')
         self.game_status_pub = self.create_publisher(String, 'game_status_feed', 10)
@@ -85,7 +85,7 @@ class GameOperation(Node):
     def scan_board(self):
         self.game_state = "SCANNING"
         self.publish_status()
-        request = GetBoardState.Request(request_message="Requesting Board State")
+        request = ScanBoard.Request(request_message="Requesting Board Scan")
         self.future = self.piece_detection_client.call_async(request)
         self.future.add_done_callback(self.board_scan_callback)
 

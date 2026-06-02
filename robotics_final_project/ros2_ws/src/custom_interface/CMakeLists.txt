@@ -14,9 +14,10 @@ find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
-  srv/GetBoardState.srv
+  srv/ScanBoard.srv
   srv/GetBestMove.srv
   srv/MoveRobot.srv
+  srv/ValidateMove.srv
 )
 
 if(BUILD_TESTING)

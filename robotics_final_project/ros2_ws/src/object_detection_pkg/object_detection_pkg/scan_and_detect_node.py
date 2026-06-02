@@ -9,7 +9,7 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from ultralytics import YOLO
 from ament_index_python.packages import get_package_share_directory
-from custom_interface.srv import GetBoardState
+from custom_interface.srv import ScanBoard
 
 
 class Scan_And_Detect(Node):
@@ -18,7 +18,7 @@ class Scan_And_Detect(Node):
         super().__init__('scan_and_detect_node')
         self.image_subscriber = self.create_subscription(Image, 'processed_camera_feed', self.image_callback, 10)
         self.publisher_ = self.create_publisher(Image, 'live_detection_feed', 10)
-        self.srv = self.create_service(GetBoardState, 'get_board_state', self.get_board_state_callback)
+        self.srv = self.create_service(ScanBoard, 'scan_board', self.scan_board_callback)
         self.timer = self.create_timer(0.1, self.timer_callback)
         self.setup_cv()
         self.setup_yolo()
@@ -107,7 +107,7 @@ class Scan_And_Detect(Node):
         except Exception as e:
             self.get_logger().error(f"Failed to publish live detection feed: {e}")
 
-    def get_board_state_callback(self, request, response):
+    def scan_board_callback(self, request, response):
         self.get_logger().info(f"Received request for board state: {request.request_message}")
 
         if self.latest_image is None:
