@@ -1,3 +1,4 @@
 string board_json
 ---
 string validated_move
+string invalid_reason

@@ -10,6 +10,21 @@ from cv_bridge import CvBridge
 DISPLAY_HEIGHT = 360
 DISPLAY_WIDTH = 640
 INFO_BAR_HEIGHT = 120
+MAX_LOG_LINES = 6
+
+# ADDED: mapping from raw game_state to human readable log message
+STATE_LABELS = {
+    "STARTING_SYSTEM":          "Starting system",
+    "WAITING_FOR_PLAYER_MOVE":  "Waiting on human",
+    "SCANNING":                 "Scanning board",
+    "VALIDATING_MOVE":          "Validating move",
+    "CALLING_AI":               "Sending move to AI",
+    "AI_COMPLETE":              "AI completed",
+    "SENDING_TO_ARM":           "Sending move to arm",
+    "ARM_MOVING":               "Arm moving piece",
+    "GAME_OVER":                "Game over",
+    "ERROR":                    "Error",
+}
 
 
 class DisplayOutput(Node):
@@ -31,7 +46,14 @@ class DisplayOutput(Node):
         self.live_detection_frame = None
         self.game_state = "WAITING"
         self.human_move = ""
+        self.ai_move = ""
         self.move_status = ""
+        self.invalid_reason = ""
+        self.game_status = ""
+        self.move_number = 0
+        self.human_color = ""
+        self.ai_color = ""
+        self.log_lines = []
 
     def raw_camera_feed_callback(self, data):
         try:
@@ -54,18 +76,39 @@ class DisplayOutput(Node):
     def game_status_callback(self, data):
         try:
             status = json.loads(data.data)
-            self.game_state = status.get("game_state", "")
+            new_state = status.get("game_state", "")
             self.human_move = status.get("human_move", "")
+            self.ai_move = status.get("ai_move", "")
             self.move_status = status.get("move_status", "")
+            self.invalid_reason = status.get("invalid_reason", "")
+            self.game_status = status.get("game_status", "")
+            self.move_number = status.get("move_number", 0)
+            self.human_color = status.get("human_color", "")
+            self.ai_color = status.get("ai_color", "")
+
+            # CHANGED: log readable state label instead of raw state string
+            if new_state != self.game_state:
+                self.game_state = new_state
+                label = STATE_LABELS.get(self.game_state, self.game_state)
+                self.add_log(label)
+
+            # log invalid reason if present
+            if self.move_status == "INVALID" and self.invalid_reason:
+                self.add_log(f"Reason: {self.invalid_reason[:38]}")
+
         except Exception as e:
             self.get_logger().error(f"Failed to parse game status: {e}")
+
+    def add_log(self, message):
+        self.log_lines.append(message)
+        if len(self.log_lines) > MAX_LOG_LINES:
+            self.log_lines.pop(0)
 
     def make_panel(self, frame, label):
         h, w = frame.shape[:2]
         scale = DISPLAY_HEIGHT / h
         new_width = int(w * scale)
         resized = cv2.resize(frame, (new_width, DISPLAY_HEIGHT))
-
         if new_width < DISPLAY_WIDTH:
             pad = DISPLAY_WIDTH - new_width
             left = pad // 2
@@ -73,31 +116,67 @@ class DisplayOutput(Node):
             resized = cv2.copyMakeBorder(resized, 0, 0, left, right, cv2.BORDER_CONSTANT, value=(0, 0, 0))
         elif new_width > DISPLAY_WIDTH:
             resized = resized[:, :DISPLAY_WIDTH]
-
         cv2.putText(resized, label, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
         return resized
+
+    def make_log_panel(self):
+        panel = np.zeros((DISPLAY_HEIGHT, DISPLAY_WIDTH, 3), dtype=np.uint8)
+        cv2.putText(panel, "Game Log", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+        for i, line in enumerate(self.log_lines):
+            y = 65 + i * 45
+            cv2.putText(panel, line, (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
+        return panel
+
+    def make_move_status_text(self):
+        # CHANGED: all em dashes replaced with hyphens for OpenCV ASCII compatibility
+        if self.game_status == "CHECKMATE_WHITE_WINS":
+            return "Checkmate - White Wins"
+        if self.game_status == "CHECKMATE_BLACK_WINS":
+            return "Checkmate - Black Wins"
+        if self.game_status == "CHECKMATE":
+            return "Checkmate"
+        if self.game_status == "STALEMATE":
+            return "Stalemate"
+        if self.game_status == "DRAW_INSUFFICIENT_MATERIAL":
+            return "Draw - Insufficient Material"
+        if self.game_status == "DRAW_REPETITION":
+            return "Draw - Repetition"
+        if self.move_status == "INVALID":
+            return "Invalid Move"
+        if self.move_number > 0:
+            if self.game_status == "CHECK":
+                return f"Move {self.move_number} - Check"
+            return f"Move {self.move_number} - {self.human_color} Turn"
+        return ""
 
     def make_info_bar(self):
         total_width = DISPLAY_WIDTH * 2
         bar = np.zeros((INFO_BAR_HEIGHT, total_width, 3), dtype=np.uint8)
-
         col_width = total_width // 3
-        headers = ["Game State", "Human Move", "Move Status"]
-        values = [self.game_state, self.human_move, self.move_status]
+
+        human_label = f"Human ({self.human_color})" if self.human_color else "Human Move"
+        ai_label = f"AI ({self.ai_color})" if self.ai_color else "AI Move"
+        headers = [human_label, ai_label, "Move Status"]
+        values = [self.human_move, self.ai_move, self.make_move_status_text()]
 
         for i, (header, value) in enumerate(zip(headers, values)):
             x = i * col_width
-
             cv2.rectangle(bar, (x, 0), (x + col_width - 4, INFO_BAR_HEIGHT - 4), (50, 50, 50), -1)
             cv2.rectangle(bar, (x, 0), (x + col_width - 4, INFO_BAR_HEIGHT - 4), (100, 100, 100), 1)
-
             cv2.putText(bar, header, (x + 10, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-
             if i == 2:
-                color = (0, 255, 0) if value == "VALID" else (0, 0, 255) if value == "INVALID" else (255, 255, 255)
+                if "Checkmate" in value:
+                    color = (0, 215, 255)    # gold
+                elif "Check" in value:
+                    color = (0, 165, 255)    # orange
+                elif "Draw" in value or "Stalemate" in value:
+                    color = (255, 255, 0)    # cyan
+                elif "Invalid" in value:
+                    color = (0, 0, 255)      # red
+                else:
+                    color = (0, 255, 0)      # green
             else:
                 color = (0, 255, 255)
-
             cv2.putText(bar, value, (x + 10, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
 
         return bar
@@ -110,13 +189,11 @@ class DisplayOutput(Node):
         top_left = self.make_panel(raw_display, "Raw Camera Feed")
         top_right = self.make_panel(processed_display, "Warped Live Feed")
         bottom_left = self.make_panel(live_detection_display, "Warped + YOLO (Live)")
-        bottom_right = np.zeros((DISPLAY_HEIGHT, DISPLAY_WIDTH, 3), dtype=np.uint8)
-        cv2.putText(bottom_right, "Board Scan Result", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+        bottom_right = self.make_log_panel()
 
         top_row = np.hstack([top_left, top_right])
         bottom_row = np.hstack([bottom_left, bottom_right])
         grid = np.vstack([top_row, bottom_row])
-
         info_bar = self.make_info_bar()
         combined = np.vstack([grid, info_bar])
 

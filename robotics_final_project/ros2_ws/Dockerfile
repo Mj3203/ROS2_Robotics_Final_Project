@@ -14,6 +14,8 @@ RUN pip install --no-cache-dir \
     opencv-python==4.8.0.76 \
     numpy==1.26.4 \
     setuptools==65.5.0 \
+    stockfish \
+    chess \
     --ignore-installed
  
  
