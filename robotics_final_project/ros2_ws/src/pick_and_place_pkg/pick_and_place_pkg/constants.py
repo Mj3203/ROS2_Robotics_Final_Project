@@ -23,15 +23,22 @@ from geometry_msgs.msg import Pose
 # - compute_board_center() : calculates the physical center of the board, used by tune.py
 
 SOLENOID_OFF_DELAY_DEFAULT = 0.2
-
+ 
 INCH = 0.0254
 HOVER_ABOVE_BOARD_M = 2.0 * INCH
 CENTER_HOVER_ABOVE_BOARD_M = 8.0 * INCH
 PLACE_Z_OFFSET = 0.0
 BOARD_Z = 8.4 * INCH
+SMALL_DESCENT_M = 0.5 * INCH  # 1 inch = 0.0254m
 BOARD_ORIGIN = (-6.55 * INCH, 7.4 * INCH, BOARD_Z)
 TOP_DOWN = (-0.7071, 0.7071, 0.0, 0.0)
-
+ 
+# ADDED: fixed center hover z height used for tune modes and approach sequences
+CENTER_HOVER_Z = 0.4166  # meters
+ 
+# ADDED: fixed descent distance for square tune mode
+SQUARE_TUNE_DESCENT_M = 0.05  # meters
+ 
 SQUARE_COORDS_M = {
     'a1': (0.020637, 0.020637), 'a2': (0.020637, 0.061912), 'a3': (0.020637, 0.103188), 'a4': (0.020637, 0.144462),
     'a5': (0.020637, 0.185737), 'a6': (0.020637, 0.227013), 'a7': (0.020637, 0.268287), 'a8': (0.020637, 0.309563),
@@ -50,8 +57,8 @@ SQUARE_COORDS_M = {
     'h1': (0.309563, 0.020637), 'h2': (0.309563, 0.061912), 'h3': (0.309563, 0.103188), 'h4': (0.309563, 0.144462),
     'h5': (0.309563, 0.185737), 'h6': (0.309563, 0.227013), 'h7': (0.309563, 0.268287), 'h8': (0.309563, 0.309563)
 }
-
-
+ 
+ 
 def make_pose(x, y, z, qx, qy, qz, qw) -> Pose:
     p = Pose()
     p.position.x = float(x)
@@ -62,8 +69,8 @@ def make_pose(x, y, z, qx, qy, qz, qw) -> Pose:
     p.orientation.z = float(qz)
     p.orientation.w = float(qw)
     return p
-
-
+ 
+ 
 def square_center_in_world(square: str) -> Pose:
     square = square.lower()
     if square not in SQUARE_COORDS_M:
@@ -71,8 +78,8 @@ def square_center_in_world(square: str) -> Pose:
     x_relative, y_relative = SQUARE_COORDS_M[square]
     board_x, board_y, board_z = BOARD_ORIGIN
     return make_pose(board_x + x_relative, board_y + y_relative, board_z, *TOP_DOWN)
-
-
+ 
+ 
 def compute_board_center():
     x_values = [coords[0] for coords in SQUARE_COORDS_M.values()]
     y_values = [coords[1] for coords in SQUARE_COORDS_M.values()]
