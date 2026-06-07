@@ -1,13 +1,26 @@
-FROM chessbot_base
+# =============================================================================
+# Dockerfile.dependencies
+# Python dependencies + pymoveit2
+#
+# Depends on: kortex_jazzy (build that first)
+# Build:  docker build -f Dockerfile.dependencies -t chessbot .
+# Run:    docker run -it --rm chessbot
+# =============================================================================
+
+FROM kortex_jazzy
 
 # -------------------------------------------------------------
-# 1. Install Python Packages for YOLO, CV, etc.
+# 1. pip Dependencies
 # -------------------------------------------------------------
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN pip install --no-cache-dir \
     ultralytics \
     opencv-python==4.8.0.76 \
     numpy==1.26.4 \
-    setuptools==65.5.0 \
+    setuptools \
     stockfish \
     chess \
     --break-system-packages
@@ -21,7 +34,6 @@ WORKDIR /robotics_final_project/ros2_ws
 RUN git clone https://github.com/AndrejOrsula/pymoveit2.git src/pymoveit2
 
 RUN /bin/bash -c ". /opt/ros/jazzy/setup.sh && \
-    cd /robotics_final_project/ros2_ws && \
     colcon build --packages-select pymoveit2"
 
 # -------------------------------------------------------------
@@ -36,12 +48,11 @@ COPY src/ /robotics_final_project/ros2_ws/src/
 
 RUN /bin/bash -c ". /opt/ros/jazzy/setup.sh && \
     . /kortex_ws/install/setup.sh && \
-    . /robotics_final_project/ros2_ws/install/setup.sh && \
     cd /robotics_final_project/ros2_ws && \
     colcon build --symlink-install --packages-ignore pymoveit2"
 
 # -------------------------------------------------------------
 # 5. Entry Point
 # -------------------------------------------------------------
-ENTRYPOINT ["/ros_entrypoint.sh"]
+ENTRYPOINT ["/bin/bash", "-c", "source /opt/ros/jazzy/setup.bash && source /kortex_ws/install/setup.bash && source /robotics_final_project/ros2_ws/install/setup.bash && export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp && exec \"$@\"", "--"]
 CMD ["bash"]

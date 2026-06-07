@@ -1,0 +1,75 @@
+# =============================================================================
+# Dockerfile.kortex_jazzy
+# ROS2 Jazzy + ros2_kortex (Kinova Gen3 Lite)
+#
+# Build:  docker build -f Dockerfile.kortex_jazzy -t kortex_jazzy .
+# Run:    docker run -it --rm kortex_jazzy
+# =============================================================================
+
+FROM osrf/ros:jazzy-desktop-full
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+ENV KORTEX_WS=/kortex_ws
+
+# -----------------------------------------------------------------------------
+# 1. System Dependencies
+# -----------------------------------------------------------------------------
+RUN apt-get update && apt-get install -y \
+    git \
+    python3-colcon-common-extensions \
+    python3-vcstool \
+    python3-rosdep \
+    build-essential \
+    cmake \
+    ros-jazzy-rmw-cyclonedds-cpp \
+    ros-jazzy-moveit \
+    && rm -rf /var/lib/apt/lists/*
+
+# -----------------------------------------------------------------------------
+# 2. Create kortex workspace and clone jazzy branch
+# -----------------------------------------------------------------------------
+RUN mkdir -p ${KORTEX_WS}/src
+WORKDIR ${KORTEX_WS}
+
+RUN git clone -b jazzy https://github.com/Kinovarobotics/ros2_kortex.git src/ros2_kortex
+
+# -----------------------------------------------------------------------------
+# 3. Patch gen3_lite_macro.xacro — adds missing 'gripper' param to load_arm
+#    Bug: kortex_robot.xacro passes gripper to load_arm but gen3_lite_macro.xacro
+#    does not declare it, causing: "xacro.XacroException: Invalid parameter gripper"
+# -----------------------------------------------------------------------------
+RUN sed -i 's/    moveit_active:=false" >/    gripper:=gen3_lite_2f\n    moveit_active:=false" >/' \
+    ${KORTEX_WS}/src/ros2_kortex/kortex_description/arms/gen3_lite/6dof/urdf/gen3_lite_macro.xacro
+
+# -----------------------------------------------------------------------------
+# 4. Install rosdep dependencies
+# -----------------------------------------------------------------------------
+RUN rosdep update && \
+    apt-get update && \
+    rosdep install \
+        --ignore-src \
+        --from-paths src \
+        --rosdistro jazzy \
+        -y \
+        -r
+
+# -----------------------------------------------------------------------------
+# 5. Build the kortex workspace
+# -----------------------------------------------------------------------------
+RUN . /opt/ros/jazzy/setup.sh && \
+    colcon build \
+        --cmake-args -DCMAKE_BUILD_TYPE=Release \
+        --parallel-workers 3
+
+# -----------------------------------------------------------------------------
+# 6. Source kortex workspace on every shell launch
+# -----------------------------------------------------------------------------
+RUN echo "source /opt/ros/jazzy/setup.bash" >> /root/.bashrc && \
+    echo "source ${KORTEX_WS}/install/setup.bash" >> /root/.bashrc && \
+    echo "export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp" >> /root/.bashrc
+
+WORKDIR ${KORTEX_WS}
+
+ENTRYPOINT ["/bin/bash", "-c", "source /opt/ros/jazzy/setup.bash && source /kortex_ws/install/setup.bash && export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp && exec \"$@\"", "--"]
+CMD ["bash"]
