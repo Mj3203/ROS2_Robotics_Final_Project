@@ -11,8 +11,8 @@ from pymoveit2.gripper_interface import GripperInterface
 from custom_interface.srv import MoveRobot
 from pick_and_place_pkg.constants import (
     SQUARE_COORDS_M, BOARD_Z, HOVER_ABOVE_BOARD_M, CENTER_HOVER_ABOVE_BOARD_M,
-    CENTER_HOVER_Z, SQUARE_TUNE_DESCENT_M, SMALL_DESCENT_M,  # ADDED
-    PLACE_Z_OFFSET, TOP_DOWN, SOLENOID_OFF_DELAY_DEFAULT,
+    CENTER_HOVER_Z,
+    PLACE_Z_OFFSET, TOP_DOWN,
     make_pose, square_center_in_world, compute_board_center
 )
 from pick_and_place_pkg.arduino_client import ArduinoSerialClient, SERIAL_AVAILABLE, list_ports
@@ -29,21 +29,25 @@ class PickAndPlaceNode(Node):
         self.setup_moveit()
         self.setup_gripper()
         self.setup_arduino()
+        if not self.wait_for_moveit():
+            self.get_logger().error("MoveIt not available. Shutting down.")
+            raise RuntimeError("MoveIt not available.")
         # self.setup_button_publisher()  # Uncomment when button integration is ready
         self.get_logger().info("PickAndPlaceNode is ready.")
 
+    # -------------------------
+    # Setup
+    # -------------------------
+
     def setup_parameters(self):
-        self.declare_parameter("cartesian_fraction_threshold", 0.90)
         self.declare_parameter("arduino_enabled", True)
         self.declare_parameter("arduino_port", "/dev/ttyUSB0")
         self.declare_parameter("arduino_baud", 115200)
-        self.declare_parameter("solenoid_off_delay", float(SOLENOID_OFF_DELAY_DEFAULT))
         self.declare_parameter("auto_detect_arduino", True)
         self.declare_parameter("task", "serve")
         self.declare_parameter("tune_mode", "center")
         self.declare_parameter("tune_square", "b3")
         self.j_home = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        self.j_center = [math.radians(a) for a in [90, -30, 90, -90, -60, 90]]
 
     def setup_moveit(self):
         self.moveit2 = MoveIt2(
@@ -54,6 +58,7 @@ class PickAndPlaceNode(Node):
             group_name="arm",
             use_move_group_action=True,
         )
+
     def setup_gripper(self):
         try:
             self.gripper = GripperInterface(
@@ -100,11 +105,7 @@ class PickAndPlaceNode(Node):
                     self.get_logger().debug(f"Auto-detect failed: {e}")
 
             if enabled:
-                self.arduino = ArduinoSerialClient(
-                    node=self,
-                    port=chosen_port,
-                    baud=baud,
-                )
+                self.arduino = ArduinoSerialClient(node=self, port=chosen_port, baud=baud)
                 self.get_logger().info(f"Arduino client enabled on {chosen_port} @ {baud}")
             else:
                 self.get_logger().info("Arduino disabled via parameter.")
@@ -113,96 +114,108 @@ class PickAndPlaceNode(Node):
             self.get_logger().warn(f"Failed to initialize Arduino client: {e}")
             self.arduino = None
 
-    def degrees_to_radians(angles):
-        return [math.radians(a) for a in angles]
+    def wait_for_moveit(self, timeout_s: int = 5) -> bool:
+        self.get_logger().info(f"Waiting {timeout_s}s for MoveIt to be ready...")
+        start = time.time()
+        last_log = start
+
+        while time.time() - start < timeout_s:
+            elapsed = time.time() - start
+
+            try:
+                result = self.moveit2.compute_fk()
+                if result is not None:
+                    self.get_logger().info("MoveIt is ready.")
+                    return True
+            except Exception:
+                pass
+
+            if time.time() - last_log >= 5.0:
+                self.get_logger().info(f"Still waiting for MoveIt... ({elapsed:.0f}s elapsed)")
+                last_log = time.time()
+
+            time.sleep(0.3)
+
+        self.get_logger().warn("Timed out waiting for MoveIt.")
+        return False
+
+    # -------------------------
+    # Motion primitives
+    # -------------------------
 
     def move_to_joints(self, joints) -> bool:
-        self.get_logger().info(f"Moving to joints: {[f'{p:.3f}' for p in joints]}")
-        self.moveit2.move_to_configuration(joint_positions=joints)
-        self.moveit2.wait_until_executed()
-        return self.moveit2.motion_suceeded
+        try:
+            self.get_logger().info(f"Moving to joints: {[f'{p:.3f}' for p in joints]}")
+            self.moveit2.move_to_configuration(joint_positions=joints)
+            self.moveit2.wait_until_executed()
+            return True
+        except Exception as e:
+            self.get_logger().error(f"move_to_configuration failed: {e}")
+            return False
 
     def plan_and_execute_pose(self, pose: Pose, cartesian: bool = False) -> bool:
-        self.moveit2.move_to_pose(
-            pose=pose,
-            cartesian=cartesian,
-            cartesian_max_step=0.005,
-            cartesian_fraction_threshold=0.90 if cartesian else 0.0,
-        )
-        self.moveit2.wait_until_executed()
-        return self.moveit2.motion_suceeded
-
-    def descend_incremental(self, target_z: float, step_m: float = 0.005) -> bool:
-        current = self.moveit2.compute_fk()
-        if current is None:
-            self.get_logger().error("Incremental descent failed — FK returned None.")
-            return False
-        x = current.pose.position.x
-        y = current.pose.position.y
-        z = current.pose.position.z
-        self.get_logger().info(f"Incremental descent from z={z:.4f} to z={target_z:.4f} in {step_m*1000:.1f}mm steps.")
-        while z > target_z:
-            z = max(z - step_m, target_z)
-            step_pose = make_pose(x, y, z, *TOP_DOWN)
-            if not self.plan_and_execute_pose(step_pose, cartesian=True):
-                self.get_logger().error(f"Incremental descent failed at z={z:.4f}")
+        try:
+            traj = self.moveit2.plan(
+                pose=pose,
+                cartesian=cartesian,
+                max_step=0.005,
+                cartesian_fraction_threshold=0.6 if cartesian else None,
+            )
+            if traj is None:
+                self.get_logger().error(
+                    f"Planning failed (cartesian={cartesian}). "
+                    f"Target: x={pose.position.x:.3f}, y={pose.position.y:.3f}, z={pose.position.z:.3f}"
+                )
                 return False
-        self.get_logger().info(f"Incremental descent complete at z={z:.4f}")
-        return True
-
-    def open_gripper(self):
-        if not self.gripper:
-            return
-        self.gripper.open()
-
-    def close_gripper(self):
-        if not self.gripper:
-            return
-        self.gripper.close()
-
-    def activate_solenoid(self):
-        try:
-            if self.arduino:
-                ok = self.arduino.send_command("sol on")
-                if ok:
-                    self.get_logger().info("Solenoid activated.")
-                else:
-                    self.get_logger().warn("Solenoid activation failed.")
+            self.moveit2.execute(traj)
+            self.moveit2.wait_until_executed()
+            return True
         except Exception as e:
-            self.get_logger().warn(f"Solenoid activation error: {e}")
-
-    def deactivate_solenoid(self):
-        try:
-            if self.arduino:
-                ok = self.arduino.send_command("sol off")
-                if ok:
-                    self.get_logger().info("Solenoid deactivated.")
-                else:
-                    self.get_logger().warn("Solenoid deactivation failed.")
-        except Exception as e:
-            self.get_logger().warn(f"Solenoid deactivation error: {e}")
-
-        try:
-            sol_off_delay = float(self.get_parameter("solenoid_off_delay").get_parameter_value().double_value)
-        except Exception:
-            sol_off_delay = SOLENOID_OFF_DELAY_DEFAULT
-
-        if sol_off_delay > 0.0:
-            time.sleep(sol_off_delay)
-
-    def descend_from_current(self, distance_m: float) -> bool:
-        current = self.moveit2.compute_fk()
-        if current is None:
-            self.get_logger().error("Cannot descend — FK failed.")
+            self.get_logger().error(f"plan_and_execute_pose failed: {e}")
             return False
-        descended = make_pose(
-            current.pose.position.x,
-            current.pose.position.y,
-            current.pose.position.z - distance_m,
-            *TOP_DOWN
-        )
-        self.get_logger().info(f"Descending {distance_m*100:.1f}cm to z={descended.position.z:.4f}")
-        return self.plan_and_execute_pose(descended, cartesian=True)
+
+    # -------------------------
+    # Gripper
+    # -------------------------
+
+    def gripper_control(self, command: str):
+        if command not in ("open", "close"):
+            self.get_logger().error(f"Invalid gripper command: '{command}'. Use 'open' or 'close'.")
+            return
+        if self.gripper is None:
+            self.get_logger().warn("Gripper command skipped — no gripper interface available.")
+            return
+        if command == "open":
+            self.gripper.open()
+        else:
+            self.gripper.close()
+
+    # -------------------------
+    # Solenoid
+    # -------------------------
+
+    def solenoid_control(self, command: str):
+        if command not in ("sol on", "sol off"):
+            self.get_logger().error(f"Invalid solenoid command: '{command}'. Use 'sol on' or 'sol off'.")
+            return
+        if self.arduino is None:
+            self.get_logger().warn("Solenoid command skipped — no Arduino client available.")
+            return
+        try:
+            ok = self.arduino.send_command(command)
+            if ok:
+                self.get_logger().info(f"Solenoid: {command}")
+            else:
+                self.get_logger().warn(f"Solenoid command failed: {command}")
+        except Exception as e:
+            self.get_logger().warn(f"Solenoid control error: {e}")
+
+        if command == "sol off":
+            time.sleep(0.2)
+
+    # -------------------------
+    # High level motion
+    # -------------------------
 
     def move_piece(self, src: str, dst: str) -> bool:
         src = src.lower()
@@ -229,7 +242,7 @@ class PickAndPlaceNode(Node):
             return False
 
         time.sleep(0.08)
-        self.activate_solenoid()
+        self.solenoid_control("sol on")
 
         if not self.plan_and_execute_pose(target_place, cartesian=True):
             self.get_logger().error("Descent to target failed.")
@@ -278,7 +291,7 @@ class PickAndPlaceNode(Node):
                 self.get_logger().error("Staged descent to target failed.")
                 return False
 
-        self.deactivate_solenoid()
+        self.solenoid_control("sol off")
 
         if not self.plan_and_execute_pose(target_hover, cartesian=True):
             self.get_logger().warn("Retract from target failed (cartesian) — trying joint space.")
@@ -286,20 +299,9 @@ class PickAndPlaceNode(Node):
 
         return True
 
-    def handle_move_robot(self, request, response):
-        uci = request.best_uci.strip().lower()
-        self.get_logger().info(f"Received move request: {uci}")
-
-        if len(uci) != 4:
-            response.robot_status_message = "ERROR: Invalid UCI"
-            return response
-
-        src = uci[:2]
-        dst = uci[2:]
-
-        success = self.move_piece(src, dst)
-        response.robot_status_message = "SUCCESS" if success else "ERROR"
-        return response
+    # -------------------------
+    # Tasks
+    # -------------------------
 
     def task_tune(self):
         tune_mode = self.get_parameter("tune_mode").get_parameter_value().string_value.lower()
@@ -313,39 +315,15 @@ class PickAndPlaceNode(Node):
                 if pose:
                     self.get_logger().info(f"[TUNE] End effector: x={pose.pose.position.x:.4f}, y={pose.pose.position.y:.4f}, z={pose.pose.position.z:.4f}")
             return
-        
-        if tune_mode == "j_center":
-            self.get_logger().info("[TUNE] Moving to j_center position.")
-            if not self.move_to_joints(self.j_center):
-                self.get_logger().error("[TUNE] Failed to move to j_center.")
-                return
-            pose = self.moveit2.compute_fk()
-            if pose:
-                self.get_logger().info(f"[TUNE] End effector: x={pose.pose.position.x:.4f}, y={pose.pose.position.y:.4f}, z={pose.pose.position.z:.4f}")
-            self.get_logger().info("[TUNE] Descending 1 inch from j_center.")
-            current = self.moveit2.compute_fk()
-            if current:
-                target_z = current.pose.position.z - SMALL_DESCENT_M
-                self.descend_incremental(target_z)
-            return
+
         if tune_mode == "hold":
             self.get_logger().info("[TUNE] Closing gripper.")
-            self.close_gripper()
+            self.gripper_control("close")
             return
 
         if tune_mode == "open":
             self.get_logger().info("[TUNE] Opening gripper.")
-            self.open_gripper()
-            return
-        
-        if tune_mode == "j_center":
-            self.get_logger().info("[TUNE] Moving to j_center position.")
-            if not self.move_to_joints(self.j_center):
-                self.get_logger().error("[TUNE] Failed to move to j_center.")
-            else:
-                pose = self.moveit2.compute_fk()
-                if pose:
-                    self.get_logger().info(f"[TUNE] End effector: x={pose.pose.position.x:.4f}, y={pose.pose.position.y:.4f}, z={pose.pose.position.z:.4f}")
+            self.gripper_control("open")
             return
 
         center_x, center_y, _ = compute_board_center()
@@ -364,6 +342,30 @@ class PickAndPlaceNode(Node):
             self.get_logger().info("[TUNE] Reached center hover successfully.")
             return
 
+        if tune_mode == "direct":
+            tune_square = self.get_parameter("tune_square").get_parameter_value().string_value.lower()
+            if not tune_square or tune_square not in SQUARE_COORDS_M:
+                self.get_logger().error(f"[TUNE] Invalid or missing tune_square: '{tune_square}'.")
+                return
+            square_center = square_center_in_world(tune_square)
+            hover_z = BOARD_Z + HOVER_ABOVE_BOARD_M
+            square_hover = make_pose(square_center.position.x, square_center.position.y, hover_z, *TOP_DOWN)
+            square_pick = make_pose(square_center.position.x, square_center.position.y, BOARD_Z + PLACE_Z_OFFSET, *TOP_DOWN)
+
+            self.get_logger().info(f"[TUNE] Direct move to {tune_square} hover (no center hover).")
+            if not self.plan_and_execute_pose(square_hover, cartesian=False):
+                self.get_logger().warn(f"[TUNE] Joint space move to {tune_square} failed — trying cartesian.")
+                if not self.plan_and_execute_pose(square_hover, cartesian=True):
+                    self.get_logger().error(f"[TUNE] Failed to reach {tune_square} hover.")
+                    return
+
+            self.get_logger().info(f"[TUNE] Descending to board level at {tune_square}.")
+            if not self.plan_and_execute_pose(square_pick, cartesian=True):
+                self.get_logger().error(f"[TUNE] Descent failed at {tune_square}.")
+                return
+            self.get_logger().info(f"[TUNE] Reached {tune_square}. Stopping.")
+            return
+
         if tune_mode in ("square", "lift"):
             tune_square = self.get_parameter("tune_square").get_parameter_value().string_value.lower()
 
@@ -373,7 +375,7 @@ class PickAndPlaceNode(Node):
 
             square_center = square_center_in_world(tune_square)
             square_hover = make_pose(square_center.position.x, square_center.position.y, CENTER_HOVER_Z, *TOP_DOWN)
-            square_pick = make_pose(square_center.position.x, square_center.position.y, CENTER_HOVER_Z - SQUARE_TUNE_DESCENT_M, *TOP_DOWN)
+            square_pick = make_pose(square_center.position.x, square_center.position.y, BOARD_Z + PLACE_Z_OFFSET, *TOP_DOWN)
 
             self.get_logger().info(f"[TUNE] Moving to center hover before {tune_square}.")
             if not self.plan_and_execute_pose(center_hover_pose, cartesian=False):
@@ -383,15 +385,17 @@ class PickAndPlaceNode(Node):
                     return
             time.sleep(0.1)
 
-            self.get_logger().info(f"[TUNE] Cartesian move to {tune_square} at z={CENTER_HOVER_Z:.3f}.")
-            if not self.plan_and_execute_pose(square_hover, cartesian=True):
-                self.get_logger().error(f"[TUNE] Failed cartesian move to {tune_square}.")
-                return
+            self.get_logger().info(f"[TUNE] Moving to {tune_square} hover.")
+            if not self.plan_and_execute_pose(square_hover, cartesian=False):
+                self.get_logger().warn(f"[TUNE] Joint space move to {tune_square} failed — trying cartesian.")
+                if not self.plan_and_execute_pose(square_hover, cartesian=True):
+                    self.get_logger().error(f"[TUNE] Failed to reach {tune_square} hover.")
+                    return
 
             time.sleep(0.08)
 
             if tune_mode == "square":
-                self.get_logger().info(f"[TUNE] Descending {SQUARE_TUNE_DESCENT_M:.3f}m at {tune_square}.")
+                self.get_logger().info(f"[TUNE] Descending to board level at {tune_square}.")
                 if not self.plan_and_execute_pose(square_pick, cartesian=True):
                     self.get_logger().error("[TUNE] Descent failed.")
                     return
@@ -399,7 +403,7 @@ class PickAndPlaceNode(Node):
                 return
 
             if tune_mode == "lift":
-                self.get_logger().info(f"[TUNE] Descending {SQUARE_TUNE_DESCENT_M:.3f}m at {tune_square}.")
+                self.get_logger().info(f"[TUNE] Descending to board level at {tune_square}.")
                 if not self.plan_and_execute_pose(square_pick, cartesian=True):
                     self.get_logger().error("[TUNE] Descent failed.")
                     return
@@ -416,7 +420,30 @@ class PickAndPlaceNode(Node):
                 self.get_logger().info(f"[TUNE] Lift complete at {tune_square}.")
                 return
 
-        self.get_logger().error(f"[TUNE] Unknown tune_mode '{tune_mode}'. Valid modes: home, hold, open, center, square, lift.")
+        self.get_logger().error(f"[TUNE] Unknown tune_mode '{tune_mode}'. Valid modes: home, hold, open, center, square, lift, direct.")
+
+    # -------------------------
+    # Service callback
+    # -------------------------
+
+    def handle_move_robot(self, request, response):
+        uci = request.best_uci.strip().lower()
+        self.get_logger().info(f"Received move request: {uci}")
+
+        if len(uci) != 4:
+            response.robot_status_message = "ERROR: Invalid UCI"
+            return response
+
+        src = uci[:2]
+        dst = uci[2:]
+
+        success = self.move_piece(src, dst)
+        response.robot_status_message = "SUCCESS" if success else "ERROR"
+        return response
+
+    # -------------------------
+    # Lifecycle
+    # -------------------------
 
     def destroy_node(self):
         if self.arduino:
@@ -426,7 +453,11 @@ class PickAndPlaceNode(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = PickAndPlaceNode()
+    try:
+        node = PickAndPlaceNode()
+    except RuntimeError:
+        rclpy.shutdown()
+        return
     executor = MultiThreadedExecutor(num_threads=2)
     executor.add_node(node)
     threading.Thread(target=executor.spin, daemon=True).start()
