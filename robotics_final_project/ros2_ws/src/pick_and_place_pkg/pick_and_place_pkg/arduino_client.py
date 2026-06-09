@@ -33,6 +33,7 @@ READER_SLEEP_INTERVAL = 0.05
 # - stop_serial_connection() : cleanly shuts down the serial connection
 class ArduinoSerialClient:
 
+    # Stores configuration, initializes connection state, and starts the reader thread if pyserial is available.
     def __init__(self, node, port="/dev/ttyUSB0", baud=115200, timeout=1.0, button_callback=None):
         self.node = node
         self.port = port
@@ -50,11 +51,13 @@ class ArduinoSerialClient:
 
         self.start_reader_thread()
 
+    # Starts the background thread that runs the serial read loop.
     def start_reader_thread(self):
         self.running = True
         self.reader_thread = threading.Thread(target=self.read_loop, daemon=True)
         self.reader_thread.start()
 
+    # Opens the serial connection to the Arduino, returning the connection or None on failure.
     def connect_to_arduino(self):
         try:
             connection = serial.Serial(self.port, self.baud, timeout=self.timeout)
@@ -65,9 +68,11 @@ class ArduinoSerialClient:
             self.node.get_logger().warn(f"Failed to connect to Arduino on {self.port}: {e}")
             return None
 
+    # Returns True if a raw serial line is a button-press message.
     def is_button_pressed(self, raw):
         return raw.upper().startswith("BUTTON")
 
+    # Background loop that connects, reads incoming lines, dispatches button presses, and reconnects on error.
     def read_loop(self):
         while self.running:
             with self.lock:
@@ -104,6 +109,7 @@ class ArduinoSerialClient:
                     self.connection = None
                 time.sleep(RECONNECT_DELAY)
 
+    # Sends a command string to the Arduino, returning True on success and dropping the connection on failure.
     def send_command(self, line: str):
         if not SERIAL_AVAILABLE:
             return False
@@ -124,6 +130,7 @@ class ArduinoSerialClient:
                 self.connection = None
                 return False
 
+    # Stops the reader loop and closes the serial connection.
     def stop_serial_connection(self):
         self.running = False
         with self.lock:

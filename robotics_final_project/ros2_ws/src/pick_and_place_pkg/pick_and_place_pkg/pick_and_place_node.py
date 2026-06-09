@@ -21,6 +21,7 @@ from pick_and_place_pkg.arduino_client import ArduinoSerialClient, SERIAL_AVAILA
 
 class PickAndPlaceNode(Node):
 
+    # Initializes the node, creates the move_robot service, runs all setup steps, and fails fast if MoveIt is unavailable.
     def __init__(self):
         super().__init__("pick_and_place_node")
         self.move_service = self.create_service(MoveRobot, "move_robot", self.handle_move_robot)
@@ -38,6 +39,7 @@ class PickAndPlaceNode(Node):
     # Setup
     # -------------------------
 
+    # Declares all ROS parameters and the home joint configuration.
     def setup_parameters(self):
         self.declare_parameter("arduino_enabled", True)
         self.declare_parameter("arduino_port", "/dev/ttyUSB0")
@@ -48,6 +50,7 @@ class PickAndPlaceNode(Node):
         self.declare_parameter("tune_square", "b3")
         self.j_home = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
+    # Creates the MoveIt2 interface for the arm.
     def setup_moveit(self):
         self.moveit2 = MoveIt2(
             node=self,
@@ -58,6 +61,7 @@ class PickAndPlaceNode(Node):
             use_move_group_action=True,
         )
 
+    # Creates the gripper interface, leaving it None if initialization fails.
     def setup_gripper(self):
         try:
             self.gripper = GripperInterface(
@@ -74,6 +78,7 @@ class PickAndPlaceNode(Node):
             self.gripper = None
             self.get_logger().warn(f"GripperInterface initialization failed: {e}")
 
+    # Connects to the Arduino serial client, auto-detecting the port unless disabled.
     def setup_arduino(self):
         self.arduino = None
         enabled = self.get_parameter("arduino_enabled").get_parameter_value().bool_value
@@ -109,6 +114,7 @@ class PickAndPlaceNode(Node):
             self.get_logger().warn(f"Failed to initialize Arduino client: {e}")
             self.arduino = None
 
+    # Polls MoveIt with compute_fk until it responds or the timeout elapses.
     def wait_for_moveit(self, timeout_s: int = 10) -> bool:
         self.get_logger().info(f"Waiting {timeout_s}s for MoveIt to be ready...")
         start = time.time()
@@ -129,6 +135,7 @@ class PickAndPlaceNode(Node):
     # Motion primitives
     # -------------------------
 
+    # Moves the arm to a joint configuration and waits for it to finish.
     def move_to_joints(self, joints) -> bool:
         try:
             self.get_logger().info(f"Moving to joints: {[f'{p:.3f}' for p in joints]}")
@@ -139,6 +146,7 @@ class PickAndPlaceNode(Node):
             self.get_logger().error(f"move_to_configuration failed: {e}")
             return False
 
+    # Plans a path to a pose (joint or cartesian) and executes it, returning success.
     def plan_and_execute_pose(self, pose: Pose, cartesian: bool = False) -> bool:
         try:
             traj = self.moveit2.plan(
@@ -164,6 +172,7 @@ class PickAndPlaceNode(Node):
     # Gripper
     # -------------------------
 
+    # Opens or closes the gripper, guarding against invalid commands or a missing interface.
     def gripper_control(self, command: str):
         if command not in ("open", "close"):
             self.get_logger().error(f"Invalid gripper command: '{command}'. Use 'open' or 'close'.")
@@ -180,6 +189,7 @@ class PickAndPlaceNode(Node):
     # Solenoid
     # -------------------------
 
+    # Turns the suction solenoid on or off via the Arduino, with a settle delay after turning off.
     def solenoid_control(self, command: str):
         if command not in ("sol on", "sol off"):
             self.get_logger().error(f"Invalid solenoid command: '{command}'. Use 'sol on' or 'sol off'.")
@@ -203,11 +213,13 @@ class PickAndPlaceNode(Node):
     # High level motion
     # -------------------------
 
+    # Builds the top-down hover pose above the center of the board.
     def get_center_hover_pose(self) -> Pose:
         cx, cy, cz = compute_board_center()
         center_hover_z = cz + CENTER_HOVER_ABOVE_BOARD_M
         return make_pose(cx, cy, center_hover_z, *TOP_DOWN)
 
+    # Moves the arm to the center hover pose, falling back from joint to cartesian planning.
     def move_to_center(self) -> bool:
         center_hover_pose = self.get_center_hover_pose()
         self.get_logger().info("[MOVE] Moving to center pose.")
@@ -218,6 +230,7 @@ class PickAndPlaceNode(Node):
                 return False
         return True
 
+    # Picks up the piece on a square and drops it into the capture basket.
     def capture_piece(self, square: str) -> bool:
         square = square.lower()
         if square not in SQUARE_COORDS_M:
@@ -283,6 +296,7 @@ class PickAndPlaceNode(Node):
 
         return True
 
+    # Picks up the piece on the source square and places it on the destination square.
     def move_piece(self, src: str, dst: str) -> bool:
         src = src.lower()
         dst = dst.lower()
@@ -390,6 +404,7 @@ class PickAndPlaceNode(Node):
     # Tasks
     # -------------------------
 
+    # Runs the requested tune mode for manual calibration and testing of arm poses.
     def task_tune(self):
         tune_mode = self.get_parameter("tune_mode").get_parameter_value().string_value.lower()
 
@@ -518,6 +533,7 @@ class PickAndPlaceNode(Node):
         }
         return rook_moves[dst]
 
+    # Service handler that executes a move request, handling captures and castling.
     def handle_move_robot(self, request, response):
         uci = request.best_uci.strip().lower()
         is_capture = request.is_capture
@@ -555,12 +571,14 @@ class PickAndPlaceNode(Node):
     # Lifecycle
     # -------------------------
 
+    # Closes the Arduino connection and shuts the node down.
     def destroy_node(self):
         if self.arduino:
             self.arduino.stop_serial_connection()
         super().destroy_node()
 
 
+# Initializes ROS, starts the node and executor, runs the requested task, then shuts down.
 def main(args=None):
     rclpy.init(args=args)
     try:
