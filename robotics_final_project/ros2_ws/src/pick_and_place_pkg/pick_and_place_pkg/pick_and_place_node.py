@@ -10,7 +10,7 @@ from pymoveit2 import MoveIt2
 from pymoveit2.gripper_interface import GripperInterface
 from custom_interface.srv import MoveRobot
 from pick_and_place_pkg.constants import (
-    SQUARE_COORDS_M, BOARD_Z, HOVER_ABOVE_BOARD_M, CENTER_HOVER_ABOVE_BOARD_M,
+    SQUARE_COORDS_M, BOARD_Z, BOARD_ORIGIN, HOVER_ABOVE_BOARD_M, CENTER_HOVER_ABOVE_BOARD_M,
     CENTER_HOVER_Z, PLACE_Z_OFFSET, TOP_DOWN, CAPTURE_JOINTS,
     make_pose, square_center_in_world, compute_board_center
 )
@@ -48,6 +48,10 @@ class PickAndPlaceNode(Node):
         self.declare_parameter("task", "serve")
         self.declare_parameter("tune_mode", "center")
         self.declare_parameter("tune_square", "b3")
+        self.declare_parameter("test_square", "e4")
+        self.declare_parameter("castling_side", "kingside")
+        self.declare_parameter("src", "e2")
+        self.declare_parameter("dst", "e4")
         self.j_home = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
     # Creates the MoveIt2 interface for the arm.
@@ -209,6 +213,26 @@ class PickAndPlaceNode(Node):
         if command == "sol off":
             time.sleep(0.2)
 
+    # Turns the motor on or off via the Arduino, with a settle delay after turning off.
+    def motor_control(self, command: str):
+        if command not in ("motor on", "motor off"):
+            self.get_logger().error(f"Invalid motor command: '{command}'. Use 'motor on' or 'motor off'.")
+            return
+        if self.arduino is None:
+            self.get_logger().warn("Motor command skipped — no Arduino client available.")
+            return
+        try:
+            ok = self.arduino.send_command(command)
+            if ok:
+                self.get_logger().info(f"Motor: {command}")
+            else:
+                self.get_logger().warn(f"Motor command failed: {command}")
+        except Exception as e:
+            self.get_logger().warn(f"Motor control error: {e}")
+
+        if command == "motor off":
+            time.sleep(0.2)
+
     # -------------------------
     # High level motion
     # -------------------------
@@ -247,6 +271,9 @@ class PickAndPlaceNode(Node):
         # Step 1 — center pose
         if not self.move_to_center():
             return False
+
+        # Motor on — before moving to the source hover position
+        self.motor_control("motor on")
 
         # Step 2 — hover above captured piece
         self.get_logger().info(f"[CAPTURE] Hovering above {square}.")
@@ -290,6 +317,9 @@ class PickAndPlaceNode(Node):
         self.solenoid_control("sol off")
         self.get_logger().info("[CAPTURE] Piece dropped into basket.")
 
+        # Motor off — after the piece has been released
+        self.motor_control("motor off")
+
         # Step 9 — return to center pose
         if not self.move_to_center():
             return False
@@ -319,6 +349,9 @@ class PickAndPlaceNode(Node):
         # Step 1 — center pose
         if not self.move_to_center():
             return False
+
+        # Motor on — before moving to the source hover position
+        self.motor_control("motor on")
 
         # Step 2 — hover above source
         self.get_logger().info(f"[MOVE] Hovering above {src}.")
@@ -389,6 +422,9 @@ class PickAndPlaceNode(Node):
         # Step 8 — release piece
         self.solenoid_control("sol off")
 
+        # Motor off — after the piece has been released
+        self.motor_control("motor off")
+
         # Step 9 — retract to hover
         self.get_logger().info(f"[MOVE] Retracting from {dst}.")
         if not self.plan_and_execute_pose(target_hover, cartesian=True):
@@ -442,6 +478,27 @@ class PickAndPlaceNode(Node):
             if pose:
                 self.get_logger().info(f"[TUNE] End effector: x={pose.pose.position.x:.4f}, y={pose.pose.position.y:.4f}, z={pose.pose.position.z:.4f}")
             self.get_logger().info("[TUNE] Reached center hover successfully.")
+            return
+
+        # Tune mode "origin" — hover above the board origin, then descend to board level so the position can be physically verified.
+        if tune_mode == "origin":
+            origin_x, origin_y, _ = BOARD_ORIGIN
+            origin_hover_pose = make_pose(origin_x, origin_y, CENTER_HOVER_Z, *TOP_DOWN)
+            origin_board_pose = make_pose(origin_x, origin_y, BOARD_Z + PLACE_Z_OFFSET, *TOP_DOWN)
+
+            self.get_logger().info(f"[TUNE] Moving to origin hover at x={origin_x:.4f}, y={origin_y:.4f}, z={CENTER_HOVER_Z:.4f}")
+            if not self.plan_and_execute_pose(origin_hover_pose, cartesian=False):
+                self.get_logger().warn("[TUNE] Joint space move failed — trying cartesian.")
+                if not self.plan_and_execute_pose(origin_hover_pose, cartesian=True):
+                    self.get_logger().error("[TUNE] Failed to reach origin hover.")
+                    return
+
+            self.get_logger().info(f"[TUNE] Descending to board origin at x={origin_x:.4f}, y={origin_y:.4f}, z={BOARD_Z + PLACE_Z_OFFSET:.4f}")
+            if not self.plan_and_execute_pose(origin_board_pose, cartesian=True):
+                self.get_logger().error("[TUNE] Descent to origin failed.")
+                return
+
+            self.get_logger().info("[TUNE] Reached board origin. Stopping for verification.")
             return
 
         if tune_mode in ("square", "lift", "direct"):
@@ -508,7 +565,59 @@ class PickAndPlaceNode(Node):
                 self.get_logger().info(f"[TUNE] Lift complete at {tune_square}.")
                 return
 
-        self.get_logger().error(f"[TUNE] Unknown tune_mode '{tune_mode}'. Valid modes: home, hold, open, center, square, lift, direct.")
+        self.get_logger().error(f"[TUNE] Unknown tune_mode '{tune_mode}'. Valid modes: home, hold, open, center, origin, square, lift, direct.")
+
+    # Tests the full capture sequence on the configured test_square.
+    def task_test_capture(self):
+        test_square = self.get_parameter("test_square").get_parameter_value().string_value.lower()
+        self.get_logger().info(f"[TEST CAPTURE] Testing capture sequence on {test_square}.")
+        if self.capture_piece(test_square):
+            self.get_logger().info(f"[TEST CAPTURE] Capture sequence on {test_square} succeeded.")
+        else:
+            self.get_logger().error(f"[TEST CAPTURE] Capture sequence on {test_square} failed.")
+
+    # Tests the full castling sequence (king first, then rook) for the configured castling_side.
+    def task_test_castling(self):
+        castling_side = self.get_parameter("castling_side").get_parameter_value().string_value.lower()
+
+        if castling_side == "kingside":
+            king_src, king_dst = "e1", "g1"
+            rook_src, rook_dst = "h1", "f1"
+        elif castling_side == "queenside":
+            king_src, king_dst = "e1", "c1"
+            rook_src, rook_dst = "a1", "d1"
+        else:
+            self.get_logger().error(f"[TEST CASTLING] Invalid castling_side: '{castling_side}'. Use 'kingside' or 'queenside'.")
+            return
+
+        self.get_logger().info(f"[TEST CASTLING] Testing {castling_side} castling.")
+
+        self.get_logger().info(f"[TEST CASTLING] Moving king {king_src} -> {king_dst}.")
+        if not self.move_piece(king_src, king_dst):
+            self.get_logger().error(f"[TEST CASTLING] King move {king_src} -> {king_dst} failed.")
+            return
+
+        self.get_logger().info(f"[TEST CASTLING] Moving rook {rook_src} -> {rook_dst}.")
+        if not self.move_piece(rook_src, rook_dst):
+            self.get_logger().error(f"[TEST CASTLING] Rook move {rook_src} -> {rook_dst} failed.")
+            return
+
+        self.get_logger().info(f"[TEST CASTLING] {castling_side} castling sequence complete.")
+
+    # Tests the full move_piece sequence from the configured src square to the dst square.
+    def task_test_move(self):
+        src = self.get_parameter("src").get_parameter_value().string_value.lower()
+        dst = self.get_parameter("dst").get_parameter_value().string_value.lower()
+
+        if src not in SQUARE_COORDS_M or dst not in SQUARE_COORDS_M:
+            self.get_logger().error(f"[TEST MOVE] Invalid square(s): {src} -> {dst}.")
+            return
+
+        self.get_logger().info(f"[TEST MOVE] Testing move sequence {src} -> {dst}.")
+        if self.move_piece(src, dst):
+            self.get_logger().info(f"[TEST MOVE] Move sequence {src} -> {dst} succeeded.")
+        else:
+            self.get_logger().error(f"[TEST MOVE] Move sequence {src} -> {dst} failed.")
 
     # -------------------------
     # Service callback
@@ -595,6 +704,12 @@ def main(args=None):
     try:
         if task == "tune":
             node.task_tune()
+        elif task == "test_capture":
+            node.task_test_capture()
+        elif task == "test_castling":
+            node.task_test_castling()
+        elif task == "test_move":
+            node.task_test_move()
         elif task == "home":
             node.move_to_joints(node.j_home)
         else:

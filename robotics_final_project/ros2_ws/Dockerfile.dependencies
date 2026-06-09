@@ -23,6 +23,7 @@ RUN pip install --no-cache-dir \
     setuptools \
     stockfish \
     chess \
+    pyserial \
     --break-system-packages
 
 # -------------------------------------------------------------

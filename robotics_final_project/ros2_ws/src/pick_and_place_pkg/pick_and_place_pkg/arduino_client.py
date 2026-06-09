@@ -10,7 +10,7 @@ except Exception:
     list_ports = None
     SERIAL_AVAILABLE = False
 
-ARDUINO_BOOT_DELAY = 0.2
+ARDUINO_BOOT_DELAY = 2.0
 RECONNECT_DELAY = 2.0
 READER_SLEEP_INTERVAL = 0.05
 
