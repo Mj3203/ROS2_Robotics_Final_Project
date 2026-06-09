@@ -15,6 +15,7 @@ class GameOperation(Node):
         self.piece_detection_client = self.create_client(ScanBoard, 'scan_board')
         self.chess_ai_client = self.create_client(GetBestMove, 'get_best_move')
         self.validate_move_client = self.create_client(ValidateMove, 'validate_move')
+        self.pick_and_place_client = self.create_client(MoveRobot, 'move_robot')
         self.game_status_pub = self.create_publisher(String, 'game_status_feed', 10)
         self.timer = self.create_timer(0.1, self.input_check_timer_callback)
         self.setup_game()
@@ -23,10 +24,11 @@ class GameOperation(Node):
         self.start_game()
 
     def setup_game(self):
-        self.game_state = "STARTING_SYSTEM"  # CHANGED: was IDLE
+        self.game_state = "STARTING_SYSTEM"
         self.current_board_state = {}
         self.human_move = ""
         self.ai_move = ""
+        self.ai_is_capture = False
         self.move_status = ""
         self.invalid_reason = ""
         self.game_status = ""
@@ -41,6 +43,7 @@ class GameOperation(Node):
         self.piece_detection_client.wait_for_service()
         self.chess_ai_client.wait_for_service()
         self.validate_move_client.wait_for_service()
+        self.pick_and_place_client.wait_for_service()
         self.get_logger().info("All services connected.")
 
     def publish_status(self):
@@ -74,7 +77,6 @@ class GameOperation(Node):
     def input_check_timer_callback(self):
         if self.is_key_pressed():
             sys.stdin.readline()
-
             if self.game_state == "WAITING_FOR_PLAYER_MOVE":
                 self.get_logger().info("ENTER detected -> Scanning board for human move.")
                 self.game_state = "SCANNING"
@@ -102,7 +104,6 @@ class GameOperation(Node):
             self.game_state = "ERROR"
             self.publish_status()
             return
-
         self.call_validate_move()
 
     def call_validate_move(self):
@@ -153,13 +154,13 @@ class GameOperation(Node):
             response = future.result()
             ai_move = response.best_move
             self.game_status = response.game_status
+            self.ai_is_capture = response.is_capture
         except Exception as e:
             self.get_logger().error(f'AI service call failed: {e}')
             self.game_state = "ERROR"
             self.publish_status()
             return
 
-        # ADDED: AI_COMPLETE state before sending to arm
         self.game_state = "AI_COMPLETE"
         self.ai_move = ai_move
         self.publish_status()
@@ -171,30 +172,37 @@ class GameOperation(Node):
             return
 
         self.move_number += 1
-        self.get_logger().info(f"AI move received: {ai_move}.")
-        self.move_robot_with_human_assistance(ai_move)
+        self.get_logger().info(f"AI move received: {ai_move} (capture={self.ai_is_capture}).")
+        self.call_pick_and_place(ai_move, self.ai_is_capture)
 
-    def move_robot_with_human_assistance(self, move_uci: str):
-        # TODO: replace with actual call_pick_and_place when arm is ready
-        # ADDED: SENDING_TO_ARM state
+    def call_pick_and_place(self, move_uci: str, is_capture: bool):
         self.game_state = "SENDING_TO_ARM"
         self.publish_status()
-        self.log_manual_action(move_uci)
+        request = MoveRobot.Request()
+        request.best_uci = move_uci
+        request.is_capture = is_capture
+        self.future = self.pick_and_place_client.call_async(request)
+        self.future.add_done_callback(self.pick_and_place_callback)
 
-        # ADDED: ARM_MOVING state
-        self.game_state = "ARM_MOVING"
-        self.publish_status()
+    def pick_and_place_callback(self, future: Future):
+        try:
+            response = future.result()
+            status = response.robot_status_message
+        except Exception as e:
+            self.get_logger().error(f'Pick and place service call failed: {e}')
+            self.game_state = "ERROR"
+            self.publish_status()
+            return
 
-        # Transition to waiting for player once arm is done
+        if "ERROR" in status.upper():
+            self.get_logger().error(f"Robot execution failed: {status}")
+            self.game_state = "ERROR"
+            self.publish_status()
+            return
+
         self.game_state = "WAITING_FOR_PLAYER_MOVE"
         self.get_logger().info("AI move complete. Make your move, then press ENTER.")
         self.publish_status()
-
-    def log_manual_action(self, move):
-        self.get_logger().info("==============================================")
-        self.get_logger().info(f"ACTION REQUIRED: MANUALLY execute move: {move}")
-        self.get_logger().info("Press ENTER in this terminal when the move is complete.")
-        self.get_logger().info("==============================================")
 
     def destroy_node(self):
         super().destroy_node()

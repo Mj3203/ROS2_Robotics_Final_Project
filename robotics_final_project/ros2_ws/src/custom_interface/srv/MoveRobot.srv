@@ -1,3 +1,4 @@
-string best_move
+string best_uci
+bool is_capture
 ---
 string robot_status_message

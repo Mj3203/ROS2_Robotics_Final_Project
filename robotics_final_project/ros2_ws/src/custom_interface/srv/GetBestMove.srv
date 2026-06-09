@@ -2,3 +2,4 @@ string players_move
 ---
 string best_move
 string game_status
+bool is_capture

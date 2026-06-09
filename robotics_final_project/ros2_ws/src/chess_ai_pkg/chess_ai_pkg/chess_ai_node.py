@@ -56,17 +56,19 @@ class ChessAIServer(Node):
         self.board = chess.Board()
         self.stockfish.set_fen_position(self.board.fen())
 
+    def get_ai_move_with_capture(self):
+        self.stockfish.set_fen_position(self.board.fen())
+        ai_move_uci = self.stockfish.get_best_move()
+        ai_move = chess.Move.from_uci(ai_move_uci)
+        is_capture = self.board.is_capture(ai_move)
+        self.board.push(ai_move)
+        self.get_logger().info(f"AI move: {ai_move_uci} (capture={is_capture})")
+        self.get_logger().info(f"FEN: {self.board.fen()}")
+        return ai_move_uci, is_capture
+
     def push_player_move(self, move_uci):
         self.board.push_uci(move_uci)
         self.get_logger().info(f"Player move pushed: {move_uci}")
-
-    def get_ai_move(self):
-        self.stockfish.set_fen_position(self.board.fen())
-        ai_move = self.stockfish.get_best_move()
-        self.board.push_uci(ai_move)
-        self.get_logger().info(f"AI move: {ai_move}")
-        self.get_logger().info(f"FEN: {self.board.fen()}")
-        return ai_move
 
     def evaluate_board_state(self):
         if self.board.is_checkmate():
@@ -108,8 +110,6 @@ class ChessAIServer(Node):
         return None
 
     def get_invalid_reason(self, scanned_dict):
-        # CHANGED: diff scanned board against current board state directly
-        # report the first square that looks different — gives operator a quick hint
         for square in chess.SQUARES:
             square_name = chess.square_name(square)
             expected_piece = self.board.piece_at(square)
@@ -119,15 +119,12 @@ class ChessAIServer(Node):
                 continue
 
             if expected_piece is not None and scanned_piece is None:
-                # piece disappeared from this square
                 piece_name = PIECE_NAME_MAP.get(expected_piece.piece_type, "Piece")
                 return f"{piece_name} {square_name} invalid"
 
             if expected_piece is None and scanned_piece is not None:
-                # unexpected piece appeared on this square
                 return f"{scanned_piece['type']} {square_name} invalid"
 
-            # piece type or color mismatch
             expected = chess.Piece(PIECE_TYPE_MAP[scanned_piece["type"]], COLOR_MAP[scanned_piece["color"]])
             if expected_piece != expected:
                 piece_name = PIECE_NAME_MAP.get(expected_piece.piece_type, "Piece")
@@ -158,7 +155,6 @@ class ChessAIServer(Node):
             if match:
                 return move.uci(), ""
 
-        # CHANGED: get_invalid_reason diffs against current board, not legal move attempts
         return "INVALID", self.get_invalid_reason(scanned_dict)
 
     def get_best_move_callback(self, request, response):
@@ -166,17 +162,16 @@ class ChessAIServer(Node):
 
         if players_move == "START_GAME":
             self.reset_board()
-            ai_move = self.get_ai_move()
+            ai_move, is_capture = self.get_ai_move_with_capture()
             game_status = self.evaluate_board_state()
+            response.best_move = ai_move
+            response.game_status = game_status
+            response.is_capture = is_capture
             if game_status in ("CHECKMATE_WHITE_WINS", "CHECKMATE_BLACK_WINS", "CHECKMATE", "STALEMATE", "DRAW_INSUFFICIENT_MATERIAL", "DRAW_REPETITION"):
-                response.best_move = ""
-                response.game_status = game_status
                 return response
             mate_prediction = self.get_mate_in_n()
             if mate_prediction:
                 self.get_logger().info(f"Mate prediction: {mate_prediction}")
-            response.best_move = ai_move
-            response.game_status = game_status
             return response
 
         self.push_player_move(players_move)
@@ -184,21 +179,19 @@ class ChessAIServer(Node):
         if game_status in ("CHECKMATE_WHITE_WINS", "CHECKMATE_BLACK_WINS", "CHECKMATE", "STALEMATE", "DRAW_INSUFFICIENT_MATERIAL", "DRAW_REPETITION"):
             response.best_move = ""
             response.game_status = game_status
+            response.is_capture = False
             return response
 
-        ai_move = self.get_ai_move()
+        ai_move, is_capture = self.get_ai_move_with_capture()
         game_status = self.evaluate_board_state()
+        response.best_move = ai_move
+        response.game_status = game_status
+        response.is_capture = is_capture
         if game_status in ("CHECKMATE_WHITE_WINS", "CHECKMATE_BLACK_WINS", "CHECKMATE", "STALEMATE", "DRAW_INSUFFICIENT_MATERIAL", "DRAW_REPETITION"):
-            response.best_move = ai_move
-            response.game_status = game_status
             return response
-
         mate_prediction = self.get_mate_in_n()
         if mate_prediction:
             self.get_logger().info(f"Mate prediction: {mate_prediction}")
-
-        response.best_move = ai_move
-        response.game_status = game_status
         return response
 
     def validate_move_callback(self, request, response):
