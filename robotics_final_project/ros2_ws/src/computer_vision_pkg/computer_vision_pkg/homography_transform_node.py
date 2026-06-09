@@ -33,6 +33,7 @@ def rearrange_order_of_detected_tags(corners, ids):
 
 class Homography_Transform(Node):
 
+    # Initializes the node, creates the camera feed subscription and publisher, and runs all setup steps.
     def __init__(self):
         super().__init__('homography_transform_node')
         self.subscription = self.create_subscription(Image, 'raw_camera_feed', self.image_callback, 10)
@@ -136,10 +137,12 @@ class Homography_Transform(Node):
         self.publisher_.publish(self.convert_cv2_to_ros(processed_frame))
         self.get_logger().info('Publishing processed camera feed')
 
+    # Cleans up and shuts the node down.
     def destroy_node(self):
         super().destroy_node()
 
 
+# Initializes ROS, spins the node until interrupted, then shuts everything down.
 def main(args=None):
     rclpy.init(args=args)
     homography_transform_node = Homography_Transform()

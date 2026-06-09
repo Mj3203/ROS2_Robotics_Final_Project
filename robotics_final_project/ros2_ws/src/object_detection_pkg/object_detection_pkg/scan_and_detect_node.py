@@ -2,7 +2,6 @@ import os
 import json
 import time
 import rclpy
-import cv2
 import numpy as np
 from rclpy.node import Node
 from sensor_msgs.msg import Image
@@ -14,6 +13,7 @@ from custom_interface.srv import ScanBoard
 
 class Scan_And_Detect(Node):
 
+    # Initializes the node, creates the image subscription, detection publisher, scan service, and timer, then runs setup.
     def __init__(self):
         super().__init__('scan_and_detect_node')
         self.image_subscriber = self.create_subscription(Image, 'processed_camera_feed', self.image_callback, 10)
@@ -24,16 +24,19 @@ class Scan_And_Detect(Node):
         self.setup_yolo()
         self.get_logger().info('Scan and Detect Node is ready.')
 
+    # Initializes the CvBridge and the latest/annotated image buffers.
     def setup_cv(self):
         self.bridge = CvBridge()
         self.latest_image = None
         self.annotated_image = None
 
+    # Loads the trained YOLO model from the package share directory.
     def setup_yolo(self):
         pkg_share = get_package_share_directory('object_detection_pkg')
         model_path = os.path.join(pkg_share, 'trained_models', 'best.pt')
         self.model = YOLO(model_path)
 
+    # Converts an incoming ROS2 Image message to an OpenCV frame.
     def capture_frame(self, data):
         try:
             return self.bridge.imgmsg_to_cv2(data, desired_encoding='bgr8')
@@ -41,9 +44,11 @@ class Scan_And_Detect(Node):
             self.get_logger().error(f"Failed to convert ROS Image to OpenCV image: {e}")
             return None
 
+    # Converts an OpenCV frame back to a ROS2 Image message.
     def convert_cv2_to_ros(self, frame):
         return self.bridge.cv2_to_imgmsg(frame, encoding='bgr8')
 
+    # Runs the YOLO model on a frame and returns the first result, or None if there are none.
     def run_yolo(self, frame):
         yolo_input = np.ascontiguousarray(frame)
         yolo_input = yolo_input.copy()
@@ -52,6 +57,7 @@ class Scan_And_Detect(Node):
             return None
         return results[0]
 
+    # Runs YOLO on a frame and maps each detected piece to its board square, returning the board state dict.
     def detect_board_state(self, frame):
         self.get_logger().info("Starting YOLO detection...")
         start_time = time.time()
@@ -89,9 +95,11 @@ class Scan_And_Detect(Node):
 
         return board_dict
 
+    # Stores the latest processed camera frame as it arrives.
     def image_callback(self, data):
         self.latest_image = self.capture_frame(data)
 
+    # Periodically runs YOLO on the latest frame and publishes the annotated live detection feed.
     def timer_callback(self):
         if self.latest_image is None:
             return
@@ -107,6 +115,7 @@ class Scan_And_Detect(Node):
         except Exception as e:
             self.get_logger().error(f"Failed to publish live detection feed: {e}")
 
+    # Service handler that detects the current board state from the latest frame and returns it as JSON.
     def scan_board_callback(self, request, response):
         self.get_logger().info(f"Received request for board state: {request.request_message}")
 
@@ -119,10 +128,12 @@ class Scan_And_Detect(Node):
         response.board_json = json.dumps(board_dict)
         return response
 
+    # Cleans up and shuts the node down.
     def destroy_node(self):
         super().destroy_node()
 
 
+# Initializes ROS, spins the node until interrupted, then shuts everything down.
 def main(args=None):
     rclpy.init(args=args)
     scan_and_detect_node = Scan_And_Detect()

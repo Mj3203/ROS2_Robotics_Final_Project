@@ -17,10 +17,10 @@ setup(
 
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='root',
-    maintainer_email='root@todo.todo',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    maintainer='mj3203',
+    maintainer_email='mj3203@gmail.com',
+    description='Chess AI: Stockfish engine + python-chess move validation and board state',
+    license='Apache-2.0',
     extras_require={
         'test': [
             'pytest',

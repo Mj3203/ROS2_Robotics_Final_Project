@@ -3,9 +3,9 @@
 <package format="3">
   <name>game_operation_pkg</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="root@todo.todo">root</maintainer>
-  <license>TODO: License declaration</license>
+  <description>Game operation: orchestrates the chess game loop across vision, AI, and arm</description>
+  <maintainer email="mj3203@gmail.com">mj3203</maintainer>
+  <license>Apache-2.0</license>
 
   <depend>rclpy</depend>
   <depend>std_msgs</depend>

@@ -10,6 +10,7 @@ from custom_interface.srv import ScanBoard, GetBestMove, ValidateMove, MoveRobot
 
 class GameOperation(Node):
 
+    # Initializes the node, creates all service clients and the status publisher, runs setup, waits for services, and starts the game.
     def __init__(self):
         super().__init__('game_operation_node')
         self.piece_detection_client = self.create_client(ScanBoard, 'scan_board')
@@ -23,6 +24,7 @@ class GameOperation(Node):
         self.get_logger().info('Game Operation Node is ready.')
         self.start_game()
 
+    # Initializes all game state fields and prompts for whether the robot plays White or Black.
     def setup_game(self):
         self.game_state = "STARTING_SYSTEM"
         self.current_board_state = {}
@@ -38,6 +40,7 @@ class GameOperation(Node):
         self.human_color = "Black" if self.robot_color == "WHITE" else "White"
         self.ai_color = "White" if self.robot_color == "WHITE" else "Black"
 
+    # Blocks until all four service clients have connected.
     def wait_for_all_services(self):
         self.get_logger().info("Waiting for all services to connect")
         self.piece_detection_client.wait_for_service()
@@ -46,6 +49,7 @@ class GameOperation(Node):
         self.pick_and_place_client.wait_for_service()
         self.get_logger().info("All services connected.")
 
+    # Publishes the current game state and move info as JSON to the status feed.
     def publish_status(self):
         msg = String()
         msg.data = json.dumps({
@@ -61,6 +65,7 @@ class GameOperation(Node):
         })
         self.game_status_pub.publish(msg)
 
+    # Kicks off the game: requests the AI's first move if the robot is White, otherwise waits for the human.
     def start_game(self):
         if self.robot_color == "WHITE":
             self.get_logger().info("Robot is WHITE. Requesting first move from AI.")
@@ -71,9 +76,11 @@ class GameOperation(Node):
             self.get_logger().info("Make your move, then press ENTER.")
             self.publish_status()
 
+    # Returns True if there is keyboard input waiting on stdin.
     def is_key_pressed(self):
         return select.select([sys.stdin], [], [], 0.0) == ([sys.stdin], [], [])
 
+    # Timer callback that watches for ENTER and triggers a board scan when the human has moved.
     def input_check_timer_callback(self):
         if self.is_key_pressed():
             sys.stdin.readline()
@@ -87,6 +94,7 @@ class GameOperation(Node):
         if self.game_state == "WAITING_FOR_PLAYER_MOVE":
             print("\rMake your move, then press ENTER... ", end="", flush=True)
 
+    # Sends an async request to the detection node to scan the current board state.
     def scan_board(self):
         self.game_state = "SCANNING"
         self.publish_status()
@@ -94,6 +102,7 @@ class GameOperation(Node):
         self.future = self.piece_detection_client.call_async(request)
         self.future.add_done_callback(self.board_scan_callback)
 
+    # Handles the scan response, stores the detected board state, and proceeds to move validation.
     def board_scan_callback(self, future: Future):
         try:
             response = future.result()
@@ -106,6 +115,7 @@ class GameOperation(Node):
             return
         self.call_validate_move()
 
+    # Sends an async request to validate the scanned board against the legal moves.
     def call_validate_move(self):
         self.game_state = "VALIDATING_MOVE"
         self.publish_status()
@@ -114,6 +124,7 @@ class GameOperation(Node):
         self.future = self.validate_move_client.call_async(request)
         self.future.add_done_callback(self.validate_move_callback)
 
+    # Handles the validation response, rejecting invalid moves or forwarding a valid move to the AI.
     def validate_move_callback(self, future: Future):
         try:
             response = future.result()
@@ -141,6 +152,7 @@ class GameOperation(Node):
         self.publish_status()
         self.call_chess_ai(validated_move)
 
+    # Sends an async request to the chess AI for its best move given the player's move.
     def call_chess_ai(self, players_move):
         self.game_state = "CALLING_AI"
         self.publish_status()
@@ -149,6 +161,7 @@ class GameOperation(Node):
         self.future = self.chess_ai_client.call_async(request)
         self.future.add_done_callback(self.ai_response_callback)
 
+    # Handles the AI response, ends the game if over, otherwise sends the AI move to the arm.
     def ai_response_callback(self, future: Future):
         try:
             response = future.result()
@@ -175,6 +188,7 @@ class GameOperation(Node):
         self.get_logger().info(f"AI move received: {ai_move} (capture={self.ai_is_capture}).")
         self.call_pick_and_place(ai_move, self.ai_is_capture)
 
+    # Sends an async request to the arm to physically execute the AI's move.
     def call_pick_and_place(self, move_uci: str, is_capture: bool):
         self.game_state = "SENDING_TO_ARM"
         self.publish_status()
@@ -184,6 +198,7 @@ class GameOperation(Node):
         self.future = self.pick_and_place_client.call_async(request)
         self.future.add_done_callback(self.pick_and_place_callback)
 
+    # Handles the arm response, returning to wait for the next human move or flagging an error.
     def pick_and_place_callback(self, future: Future):
         try:
             response = future.result()
@@ -204,10 +219,12 @@ class GameOperation(Node):
         self.get_logger().info("AI move complete. Make your move, then press ENTER.")
         self.publish_status()
 
+    # Cleans up and shuts the node down.
     def destroy_node(self):
         super().destroy_node()
 
 
+# Initializes ROS, spins the node until interrupted, then shuts everything down.
 def main(args=None):
     rclpy.init(args=args)
     game_operation = GameOperation()

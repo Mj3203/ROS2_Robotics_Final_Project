@@ -1,7 +1,7 @@
 from setuptools import find_packages, setup
- 
+
 package_name = 'display_output_pkg'
- 
+
 setup(
     name=package_name,
     version='0.0.0',
@@ -13,10 +13,10 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='root',
-    maintainer_email='root@todo.todo',
-    description='Display output package for chessbot — combines raw and processed camera feeds into a single window.',
-    license='TODO: License declaration',
+    maintainer='mj3203',
+    maintainer_email='mj3203@gmail.com',
+    description='Display output: 2x2 camera grid plus game status bar in a single window',
+    license='Apache-2.0',
     extras_require={
         'test': [
             'pytest',

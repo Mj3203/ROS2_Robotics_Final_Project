@@ -499,6 +499,25 @@ class PickAndPlaceNode(Node):
     # Service callback
     # -------------------------
 
+    # Returns True if the move is a castling move (king moves two squares horizontally from its home square).
+    def is_castling_move(self, src, dst):
+        return (
+            src in ("e1", "e8")
+            and dst in ("g1", "c1", "g8", "c8")
+            and src[1] == dst[1]
+            and abs(ord(src[0]) - ord(dst[0])) == 2
+        )
+
+    # Returns the (rook_src, rook_dst) squares for the castling identified by the king's destination square.
+    def get_castling_rook_move(self, src, dst):
+        rook_moves = {
+            "g1": ("h1", "f1"),  # white kingside
+            "c1": ("a1", "d1"),  # white queenside
+            "g8": ("h8", "f8"),  # black kingside
+            "c8": ("a8", "d8"),  # black queenside
+        }
+        return rook_moves[dst]
+
     def handle_move_robot(self, request, response):
         uci = request.best_uci.strip().lower()
         is_capture = request.is_capture
@@ -516,6 +535,17 @@ class PickAndPlaceNode(Node):
             if not self.capture_piece(dst):
                 response.robot_status_message = "ERROR: Capture failed"
                 return response
+
+        if self.is_castling_move(src, dst):
+            self.get_logger().info(f"Castling move detected: {uci}.")
+            if not self.move_piece(src, dst):
+                response.robot_status_message = "ERROR"
+                return response
+            rook_src, rook_dst = self.get_castling_rook_move(src, dst)
+            self.get_logger().info(f"Moving castling rook: {rook_src} -> {rook_dst}.")
+            success = self.move_piece(rook_src, rook_dst)
+            response.robot_status_message = "SUCCESS" if success else "ERROR"
+            return response
 
         success = self.move_piece(src, dst)
         response.robot_status_message = "SUCCESS" if success else "ERROR"

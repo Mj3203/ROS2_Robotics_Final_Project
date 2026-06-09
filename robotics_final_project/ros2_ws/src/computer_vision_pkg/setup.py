@@ -13,10 +13,10 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='root',
-    maintainer_email='root@todo.todo',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    maintainer='mj3203',
+    maintainer_email='mj3203@gmail.com',
+    description='Computer vision: raw camera capture and ArUco homography board warping',
+    license='Apache-2.0',
     extras_require={
         'test': [
             'pytest',

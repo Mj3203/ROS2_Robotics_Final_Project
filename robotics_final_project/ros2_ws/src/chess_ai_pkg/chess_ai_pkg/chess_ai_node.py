@@ -31,6 +31,7 @@ PIECE_NAME_MAP = {
 
 class ChessAIServer(Node):
 
+    # Initializes the node, creates the chess services, and runs all setup steps.
     def __init__(self):
         super().__init__('chess_ai_server')
         self.get_best_move_srv = self.create_service(GetBestMove, 'get_best_move', self.get_best_move_callback)
@@ -39,6 +40,7 @@ class ChessAIServer(Node):
         self.setup_chess()
         self.get_logger().info('Chess AI Server node is ready.')
 
+    # Loads the bundled Stockfish engine binary and sets its search depth.
     def setup_stockfish(self):
         stockfish_binary_path = "/robotics_final_project/ros2_ws/install/chess_ai_pkg/share/chess_ai_pkg/stockfish_engine/stockfish-ubuntu-x86-64-avx2"
         self.get_logger().info(f"Loading Stockfish from: {stockfish_binary_path}")
@@ -49,16 +51,25 @@ class ChessAIServer(Node):
         except Exception as e:
             self.get_logger().error(f"Failed to initialize Stockfish: {e}")
 
+    # Creates the authoritative python-chess board that tracks game state.
     def setup_chess(self):
         self.board = chess.Board()
 
+    # Resets the board to the starting position and syncs Stockfish to it.
     def reset_board(self):
         self.board = chess.Board()
         self.stockfish.set_fen_position(self.board.fen())
 
+    # Returns the current legal moves with pawn promotions filtered out.
+    def get_restricted_legal_moves(self):
+        return [move for move in self.board.legal_moves if move.promotion is None]
+
+    # Asks Stockfish for the best non-promotion move, records whether it is a capture, and applies it to the board.
     def get_ai_move_with_capture(self):
         self.stockfish.set_fen_position(self.board.fen())
-        ai_move_uci = self.stockfish.get_best_move()
+        allowed_ucis = [move.uci() for move in self.get_restricted_legal_moves()]
+        ranked_moves = self.stockfish.get_top_moves(self.board.legal_moves.count())
+        ai_move_uci = next((m["Move"] for m in ranked_moves if m["Move"] in allowed_ucis), allowed_ucis[0])
         ai_move = chess.Move.from_uci(ai_move_uci)
         is_capture = self.board.is_capture(ai_move)
         self.board.push(ai_move)
@@ -66,10 +77,12 @@ class ChessAIServer(Node):
         self.get_logger().info(f"FEN: {self.board.fen()}")
         return ai_move_uci, is_capture
 
+    # Applies the human player's move to the board.
     def push_player_move(self, move_uci):
         self.board.push_uci(move_uci)
         self.get_logger().info(f"Player move pushed: {move_uci}")
 
+    # Checks the board for checkmate, stalemate, draw, or check and returns a status string.
     def evaluate_board_state(self):
         if self.board.is_checkmate():
             self.get_logger().info("CHECKMATE detected!")
@@ -101,6 +114,7 @@ class ChessAIServer(Node):
 
         return ""
 
+    # Asks Stockfish whether the current position is a forced mate and returns the mate count.
     def get_mate_in_n(self):
         eval_info = self.stockfish.get_evaluation()
         if eval_info["type"] == "mate":
@@ -109,6 +123,7 @@ class ChessAIServer(Node):
             return f"MATE_IN_{mate_value}"
         return None
 
+    # Compares the scanned board against the expected board to explain why a move was invalid.
     def get_invalid_reason(self, scanned_dict):
         for square in chess.SQUARES:
             square_name = chess.square_name(square)
@@ -132,6 +147,7 @@ class ChessAIServer(Node):
 
         return "Move invalid"
 
+    # Finds the legal move whose resulting position matches the scanned board, or reports it as invalid.
     def validate_human_move(self, scanned_dict):
         for move in self.board.legal_moves:
             test_board = self.board.copy()
@@ -157,6 +173,7 @@ class ChessAIServer(Node):
 
         return "INVALID", self.get_invalid_reason(scanned_dict)
 
+    # Service handler that starts a game or processes a player move and returns the AI's reply.
     def get_best_move_callback(self, request, response):
         players_move = request.players_move
 
@@ -194,6 +211,7 @@ class ChessAIServer(Node):
             self.get_logger().info(f"Mate prediction: {mate_prediction}")
         return response
 
+    # Service handler that validates a scanned board state against the legal moves.
     def validate_move_callback(self, request, response):
         scanned_dict = json.loads(request.board_json)
         validated_move, invalid_reason = self.validate_human_move(scanned_dict)
@@ -204,10 +222,12 @@ class ChessAIServer(Node):
             self.get_logger().warning(f"Invalid reason: {invalid_reason}")
         return response
 
+    # Cleans up and shuts the node down.
     def destroy_node(self):
         super().destroy_node()
 
 
+# Initializes ROS, spins the node until interrupted, then shuts everything down.
 def main(args=None):
     rclpy.init(args=args)
     chess_ai_server = ChessAIServer()

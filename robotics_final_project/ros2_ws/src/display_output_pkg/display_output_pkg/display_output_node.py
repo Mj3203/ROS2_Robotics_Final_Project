@@ -29,6 +29,7 @@ STATE_LABELS = {
 
 class DisplayOutput(Node):
 
+    # Initializes the node, creates the feed subscriptions and render timer, and runs setup.
     def __init__(self):
         super().__init__('display_output_node')
         self.raw_sub = self.create_subscription(Image, 'raw_camera_feed', self.raw_camera_feed_callback, 10)
@@ -39,6 +40,7 @@ class DisplayOutput(Node):
         self.setup_display()
         self.get_logger().info('Display Output Node is ready.')
 
+    # Initializes the CvBridge and all display state fields.
     def setup_display(self):
         self.bridge = CvBridge()
         self.raw_frame = None
@@ -55,55 +57,13 @@ class DisplayOutput(Node):
         self.ai_color = ""
         self.log_lines = []
 
-    def raw_camera_feed_callback(self, data):
-        try:
-            self.raw_frame = self.bridge.imgmsg_to_cv2(data, 'bgr8')
-        except Exception as e:
-            self.get_logger().error(f"Failed to convert raw camera feed: {e}")
-
-    def processed_camera_feed_callback(self, data):
-        try:
-            self.processed_frame = self.bridge.imgmsg_to_cv2(data, 'bgr8')
-        except Exception as e:
-            self.get_logger().error(f"Failed to convert processed camera feed: {e}")
-
-    def live_detection_feed_callback(self, data):
-        try:
-            self.live_detection_frame = self.bridge.imgmsg_to_cv2(data, 'bgr8')
-        except Exception as e:
-            self.get_logger().error(f"Failed to convert live detection feed: {e}")
-
-    def game_status_callback(self, data):
-        try:
-            status = json.loads(data.data)
-            new_state = status.get("game_state", "")
-            self.human_move = status.get("human_move", "")
-            self.ai_move = status.get("ai_move", "")
-            self.move_status = status.get("move_status", "")
-            self.invalid_reason = status.get("invalid_reason", "")
-            self.game_status = status.get("game_status", "")
-            self.move_number = status.get("move_number", 0)
-            self.human_color = status.get("human_color", "")
-            self.ai_color = status.get("ai_color", "")
-
-            # CHANGED: log readable state label instead of raw state string
-            if new_state != self.game_state:
-                self.game_state = new_state
-                label = STATE_LABELS.get(self.game_state, self.game_state)
-                self.add_log(label)
-
-            # log invalid reason if present
-            if self.move_status == "INVALID" and self.invalid_reason:
-                self.add_log(f"Reason: {self.invalid_reason[:38]}")
-
-        except Exception as e:
-            self.get_logger().error(f"Failed to parse game status: {e}")
-
+    # Appends a message to the rolling game log, trimming the oldest line past the limit.
     def add_log(self, message):
         self.log_lines.append(message)
         if len(self.log_lines) > MAX_LOG_LINES:
             self.log_lines.pop(0)
 
+    # Resizes a frame to the panel size, pads or crops it to fit, and draws its label.
     def make_panel(self, frame, label):
         h, w = frame.shape[:2]
         scale = DISPLAY_HEIGHT / h
@@ -119,6 +79,7 @@ class DisplayOutput(Node):
         cv2.putText(resized, label, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
         return resized
 
+    # Builds the game log panel listing the most recent status messages.
     def make_log_panel(self):
         panel = np.zeros((DISPLAY_HEIGHT, DISPLAY_WIDTH, 3), dtype=np.uint8)
         cv2.putText(panel, "Game Log", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
@@ -127,6 +88,7 @@ class DisplayOutput(Node):
             cv2.putText(panel, line, (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
         return panel
 
+    # Builds the human-readable move/result text shown in the status column.
     def make_move_status_text(self):
         # CHANGED: all em dashes replaced with hyphens for OpenCV ASCII compatibility
         if self.game_status == "CHECKMATE_WHITE_WINS":
@@ -149,6 +111,7 @@ class DisplayOutput(Node):
             return f"Move {self.move_number} - {self.human_color} Turn"
         return ""
 
+    # Builds the bottom info bar showing the human move, AI move, and move status.
     def make_info_bar(self):
         total_width = DISPLAY_WIDTH * 2
         bar = np.zeros((INFO_BAR_HEIGHT, total_width, 3), dtype=np.uint8)
@@ -181,6 +144,55 @@ class DisplayOutput(Node):
 
         return bar
 
+    # Stores the latest raw camera frame for display.
+    def raw_camera_feed_callback(self, data):
+        try:
+            self.raw_frame = self.bridge.imgmsg_to_cv2(data, 'bgr8')
+        except Exception as e:
+            self.get_logger().error(f"Failed to convert raw camera feed: {e}")
+
+    # Stores the latest warped/processed camera frame for display.
+    def processed_camera_feed_callback(self, data):
+        try:
+            self.processed_frame = self.bridge.imgmsg_to_cv2(data, 'bgr8')
+        except Exception as e:
+            self.get_logger().error(f"Failed to convert processed camera feed: {e}")
+
+    # Stores the latest YOLO live-detection frame for display.
+    def live_detection_feed_callback(self, data):
+        try:
+            self.live_detection_frame = self.bridge.imgmsg_to_cv2(data, 'bgr8')
+        except Exception as e:
+            self.get_logger().error(f"Failed to convert live detection feed: {e}")
+
+    # Parses the incoming game status JSON and updates the display fields and log.
+    def game_status_callback(self, data):
+        try:
+            status = json.loads(data.data)
+            new_state = status.get("game_state", "")
+            self.human_move = status.get("human_move", "")
+            self.ai_move = status.get("ai_move", "")
+            self.move_status = status.get("move_status", "")
+            self.invalid_reason = status.get("invalid_reason", "")
+            self.game_status = status.get("game_status", "")
+            self.move_number = status.get("move_number", 0)
+            self.human_color = status.get("human_color", "")
+            self.ai_color = status.get("ai_color", "")
+
+            # CHANGED: log readable state label instead of raw state string
+            if new_state != self.game_state:
+                self.game_state = new_state
+                label = STATE_LABELS.get(self.game_state, self.game_state)
+                self.add_log(label)
+
+            # log invalid reason if present
+            if self.move_status == "INVALID" and self.invalid_reason:
+                self.add_log(f"Reason: {self.invalid_reason[:38]}")
+
+        except Exception as e:
+            self.get_logger().error(f"Failed to parse game status: {e}")
+
+    # Assembles the 2x2 camera grid plus info bar and renders the combined window.
     def display_timer_callback(self):
         raw_display = self.raw_frame if self.raw_frame is not None else np.zeros((DISPLAY_HEIGHT, DISPLAY_WIDTH, 3), dtype=np.uint8)
         processed_display = self.processed_frame if self.processed_frame is not None else np.zeros((DISPLAY_HEIGHT, DISPLAY_WIDTH, 3), dtype=np.uint8)
@@ -200,11 +212,13 @@ class DisplayOutput(Node):
         cv2.imshow("Chessbot Display", combined)
         cv2.waitKey(1)
 
+    # Closes OpenCV windows and shuts the node down.
     def destroy_node(self):
         cv2.destroyAllWindows()
         super().destroy_node()
 
 
+# Initializes ROS, spins the node until interrupted, then shuts everything down.
 def main(args=None):
     rclpy.init(args=args)
     display_output_node = DisplayOutput()
