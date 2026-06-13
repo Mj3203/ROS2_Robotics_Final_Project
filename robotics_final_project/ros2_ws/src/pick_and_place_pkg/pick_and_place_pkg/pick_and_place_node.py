@@ -1,11 +1,14 @@
 import time
 import threading
+import queue
 import math
 import os
 import rclpy
 from rclpy.node import Node
-from rclpy.executors import MultiThreadedExecutor
+from rclpy.executors import SingleThreadedExecutor
+from rclpy.callback_groups import ReentrantCallbackGroup, MutuallyExclusiveCallbackGroup
 from geometry_msgs.msg import Pose
+from std_msgs.msg import String
 from pymoveit2 import MoveIt2
 from pymoveit2.gripper_interface import GripperInterface
 from custom_interface.srv import MoveRobot
@@ -24,7 +27,10 @@ class PickAndPlaceNode(Node):
     # Initializes the node, creates the move_robot service, runs all setup steps, and fails fast if MoveIt is unavailable.
     def __init__(self):
         super().__init__("pick_and_place_node")
-        self.move_service = self.create_service(MoveRobot, "move_robot", self.handle_move_robot)
+        # The move_robot service is NOT created here — it lives on a separate MoveRobotServiceNode with
+        # its OWN executor (see main()). Sharing one executor between the move_group action client and
+        # the service corrupted the service's wait set after the first motion: an rcl_action crash under
+        # a MultiThreadedExecutor, a silent stall under a SingleThreadedExecutor. Isolating them fixes it.
         self.setup_parameters()
         self.setup_moveit()
         self.setup_gripper()
@@ -33,6 +39,12 @@ class PickAndPlaceNode(Node):
             self.get_logger().error("MoveIt not available. Shutting down.")
             raise RuntimeError("MoveIt not available.")
         # self.setup_button_publisher()  # Uncomment when button integration is ready
+        # Async motion: MoveRobotServiceNode enqueues a move onto this shared queue and returns ACCEPTED
+        # immediately. The motion itself runs on the MAIN thread in run_motion_loop() (see main()), NOT
+        # on an executor thread — mirroring snake_test and the tune/test tasks, the only motion paths
+        # proven to run many moves without wedging. The move_complete result is published here.
+        self.move_complete_pub = self.create_publisher(String, 'move_complete', 10)
+        self.motion_queue = queue.Queue()
         self.get_logger().info("PickAndPlaceNode is ready.")
 
     # -------------------------
@@ -56,6 +68,12 @@ class PickAndPlaceNode(Node):
 
     # Creates the MoveIt2 interface for the arm.
     def setup_moveit(self):
+        # Mutually exclusive (was Reentrant): the original reason for a reentrant group — the motion
+        # ran inside the service callback and needed MoveIt's callbacks to run concurrently — is gone
+        # now that motion runs on the main thread. Serializing the move_group action client's callbacks
+        # avoids the rcl_action "wait set index for status subscription is out of bounds" crash that a
+        # MultiThreadedExecutor hit while indexing the action client's entities mid-motion.
+        self.moveit_callback_group = MutuallyExclusiveCallbackGroup()
         self.moveit2 = MoveIt2(
             node=self,
             joint_names=["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"],
@@ -63,6 +81,7 @@ class PickAndPlaceNode(Node):
             end_effector_name="end_effector_link",
             group_name="arm",
             use_move_group_action=True,
+            callback_group=self.moveit_callback_group,
         )
 
     # Creates the gripper interface, leaving it None if initialization fails.
@@ -153,20 +172,26 @@ class PickAndPlaceNode(Node):
     # Plans a path to a pose (joint or cartesian) and executes it, returning success.
     def plan_and_execute_pose(self, pose: Pose, cartesian: bool = False) -> bool:
         try:
+            self.get_logger().info(f"[PLAN] Calling moveit2.plan() cartesian={cartesian} target=({pose.position.x:.3f}, {pose.position.y:.3f}, {pose.position.z:.3f})")
             traj = self.moveit2.plan(
                 pose=pose,
                 cartesian=cartesian,
                 max_step=0.005,
                 cartesian_fraction_threshold=0.90 if cartesian else None,
             )
+            self.get_logger().info(f"[PLAN] moveit2.plan() returned — traj is None: {traj is None}")
             if traj is None:
                 self.get_logger().error(
                     f"Planning failed (cartesian={cartesian}). "
                     f"Target: x={pose.position.x:.3f}, y={pose.position.y:.3f}, z={pose.position.z:.3f}"
                 )
                 return False
+            self.get_logger().info("[EXEC] Calling moveit2.execute()")
             self.moveit2.execute(traj)
+            self.get_logger().info("[EXEC] moveit2.execute() returned")
+            self.get_logger().info("[WAIT] Calling moveit2.wait_until_executed()")
             self.moveit2.wait_until_executed()
+            self.get_logger().info("[WAIT] moveit2.wait_until_executed() returned")
             return True
         except Exception as e:
             self.get_logger().error(f"plan_and_execute_pose failed: {e}")
@@ -642,39 +667,39 @@ class PickAndPlaceNode(Node):
         }
         return rook_moves[dst]
 
-    # Service handler that executes a move request, handling captures and castling.
-    def handle_move_robot(self, request, response):
-        uci = request.best_uci.strip().lower()
-        is_capture = request.is_capture
-        self.get_logger().info(f"Received move request: {uci} (capture={is_capture})")
-
-        if len(uci) != 4:
-            response.robot_status_message = "ERROR: Invalid UCI"
-            return response
-
-        src = uci[:2]
-        dst = uci[2:]
-
-        if is_capture:
-            self.get_logger().info(f"Capture move — removing piece from {dst} first.")
-            if not self.capture_piece(dst):
-                response.robot_status_message = "ERROR: Capture failed"
-                return response
-
-        if self.is_castling_move(src, dst):
-            self.get_logger().info(f"Castling move detected: {uci}.")
-            if not self.move_piece(src, dst):
-                response.robot_status_message = "ERROR"
-                return response
-            rook_src, rook_dst = self.get_castling_rook_move(src, dst)
-            self.get_logger().info(f"Moving castling rook: {rook_src} -> {rook_dst}.")
-            success = self.move_piece(rook_src, rook_dst)
-            response.robot_status_message = "SUCCESS" if success else "ERROR"
-            return response
-
-        success = self.move_piece(src, dst)
-        response.robot_status_message = "SUCCESS" if success else "ERROR"
-        return response
+    # Main-thread loop (serve mode): blocks pulling queued moves and runs each to completion (capture,
+    # castling, normal), then publishes the result on 'move_complete'. Runs on the MAIN thread — the
+    # same pattern snake_test and the tune/test tasks use — so MoveIt's long wait_until_executed() is
+    # never driven from an executor thread, which is what wedged the executor after one move.
+    def run_motion_loop(self):
+        while rclpy.ok():
+            try:
+                src, dst, is_capture = self.motion_queue.get(timeout=0.5)
+            except queue.Empty:
+                continue
+            try:
+                success = True
+                if is_capture:
+                    self.get_logger().info(f"Capture move — removing piece from {dst} first.")
+                    success = self.capture_piece(dst)
+                if success:
+                    if self.is_castling_move(src, dst):
+                        self.get_logger().info(f"Castling move detected: {src}{dst}.")
+                        success = self.move_piece(src, dst)
+                        if success:
+                            rook_src, rook_dst = self.get_castling_rook_move(src, dst)
+                            self.get_logger().info(f"Moving castling rook: {rook_src} -> {rook_dst}.")
+                            success = self.move_piece(rook_src, rook_dst)
+                    else:
+                        success = self.move_piece(src, dst)
+            except Exception as e:
+                self.get_logger().error(f"Motion loop exception: {e}")
+                success = False
+            status = "SUCCESS" if success else "ERROR"
+            msg = String()
+            msg.data = status
+            self.move_complete_pub.publish(msg)
+            self.get_logger().info(f"[WORKER] Move complete — published status: {status}")
 
     # -------------------------
     # Lifecycle
@@ -687,7 +712,35 @@ class PickAndPlaceNode(Node):
         super().destroy_node()
 
 
-# Initializes ROS, starts the node and executor, runs the requested task, then shuts down.
+# Isolated node that owns ONLY the move_robot service. It runs on its own executor (see main()), so it
+# is completely separate from the MoveIt action client's wait set — the action client can crash or stall
+# its own executor without ever stopping this service from accepting the next move. The handler just
+# validates the UCI and enqueues the move onto the shared queue; the main thread runs the motion.
+class MoveRobotServiceNode(Node):
+
+    def __init__(self, motion_queue):
+        super().__init__("move_robot_service_node")
+        self.motion_queue = motion_queue
+        self.move_service = self.create_service(MoveRobot, "move_robot", self.handle_move_robot)
+        self.get_logger().info("MoveRobotServiceNode is ready.")
+
+    # Validates the UCI, enqueues the move for the main-thread motion loop, and returns ACCEPTED at once.
+    def handle_move_robot(self, request, response):
+        uci = request.best_uci.strip().lower()
+        is_capture = request.is_capture
+        self.get_logger().info(f"[SERVICE] Received move request: {uci} (capture={is_capture})")
+
+        if len(uci) != 4:
+            response.robot_status_message = "ERROR: Invalid UCI"
+            return response
+
+        self.motion_queue.put((uci[:2], uci[2:], is_capture))
+        response.robot_status_message = "ACCEPTED"
+        self.get_logger().info("[SERVICE] Move queued — returning ACCEPTED")
+        return response
+
+
+# Initializes ROS, starts the nodes and executors, runs the requested task, then shuts down.
 def main(args=None):
     rclpy.init(args=args)
     try:
@@ -695,9 +748,26 @@ def main(args=None):
     except RuntimeError:
         rclpy.shutdown()
         return
-    executor = MultiThreadedExecutor(num_threads=2)
-    executor.add_node(node)
-    threading.Thread(target=executor.spin, daemon=True).start()
+    # Two nodes, two executors, two independent wait sets. The MoveIt node (action client + motion) is
+    # spun by its own executor — exactly the snake_test pattern, proven to run many moves with the
+    # motion on the main thread. The move_robot service lives on a SEPARATE node with its OWN executor,
+    # so the action client's wait-set problems can never stop the service from accepting the next move.
+    service_node = MoveRobotServiceNode(node.motion_queue)
+
+    moveit_executor = SingleThreadedExecutor()
+    moveit_executor.add_node(node)
+    service_executor = SingleThreadedExecutor()
+    service_executor.add_node(service_node)
+
+    # Spin each executor in its own background thread; log any crash (daemon threads die silently).
+    def spin_executor(executor, label):
+        try:
+            executor.spin()
+        except Exception as e:
+            node.get_logger().error(f"[EXECUTOR:{label}] spin() crashed: {e}")
+
+    threading.Thread(target=spin_executor, args=(moveit_executor, "moveit"), daemon=True).start()
+    threading.Thread(target=spin_executor, args=(service_executor, "service"), daemon=True).start()
 
     task = node.get_parameter("task").get_parameter_value().string_value
 
@@ -714,7 +784,7 @@ def main(args=None):
             node.move_to_joints(node.j_home)
         else:
             node.get_logger().info("PickAndPlaceNode serving move_robot requests.")
-            threading.Event().wait()
+            node.run_motion_loop()   # motion runs HERE on the main thread; executor spins in background
     except KeyboardInterrupt:
         pass
     finally:

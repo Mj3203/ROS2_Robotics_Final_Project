@@ -2,10 +2,23 @@ import rclpy
 import json
 import select
 import sys
+import time
 from rclpy.node import Node
 from rclpy.task import Future
 from std_msgs.msg import String
 from custom_interface.srv import ScanBoard, GetBestMove, ValidateMove, MoveRobot
+
+
+# Seconds to wait for the arm to report completion before declaring the move failed.
+# A normal move takes ~14s; this gives generous margin before the watchdog trips.
+ARM_TIMEOUT_S = 60.0
+
+# Game-status values that mean the game has ended. When the AI's own move carries one of these,
+# the move still has to be physically played before the game is declared over.
+TERMINAL_STATUSES = (
+    "CHECKMATE_WHITE_WINS", "CHECKMATE_BLACK_WINS", "CHECKMATE",
+    "STALEMATE", "DRAW_INSUFFICIENT_MATERIAL", "DRAW_REPETITION",
+)
 
 
 class GameOperation(Node):
@@ -17,6 +30,7 @@ class GameOperation(Node):
         self.chess_ai_client = self.create_client(GetBestMove, 'get_best_move')
         self.validate_move_client = self.create_client(ValidateMove, 'validate_move')
         self.pick_and_place_client = self.create_client(MoveRobot, 'move_robot')
+        self.move_complete_sub = self.create_subscription(String, 'move_complete', self.move_complete_callback, 10)
         self.game_status_pub = self.create_publisher(String, 'game_status_feed', 10)
         self.timer = self.create_timer(0.1, self.input_check_timer_callback)
         self.setup_game()
@@ -35,6 +49,11 @@ class GameOperation(Node):
         self.invalid_reason = ""
         self.game_status = ""
         self.move_number = 0
+        # Wall-clock deadline (time.time() seconds) by which the arm must report completion; None when idle.
+        self.arm_deadline = None
+        # True when the AI move currently being sent to the arm also ends the game, so the game is
+        # declared over only after the arm has physically played it (see move_complete_callback).
+        self.game_over_after_move = False
         robot_color = input("Is the robot WHITE or BLACK? (W/B): ").strip().upper()
         self.robot_color = "WHITE" if robot_color == "W" else "BLACK"
         self.human_color = "Black" if self.robot_color == "WHITE" else "White"
@@ -80,8 +99,23 @@ class GameOperation(Node):
     def is_key_pressed(self):
         return select.select([sys.stdin], [], [], 0.0) == ([sys.stdin], [], [])
 
+    # Trips if the arm hasn't reported completion within ARM_TIMEOUT_S, so a missed
+    # move_complete message flags an error instead of hanging the game forever.
+    def check_arm_watchdog(self):
+        if self.game_state not in ("SENDING_TO_ARM", "ARM_MOVING"):
+            return
+        if self.arm_deadline is not None and time.time() > self.arm_deadline:
+            self.get_logger().error(
+                f"Watchdog: no completion from arm within {ARM_TIMEOUT_S:.0f}s "
+                f"(state={self.game_state}). Flagging ERROR."
+            )
+            self.game_state = "ERROR"
+            self.arm_deadline = None
+            self.publish_status()
+
     # Timer callback that watches for ENTER and triggers a board scan when the human has moved.
     def input_check_timer_callback(self):
+        self.check_arm_watchdog()
         if self.is_key_pressed():
             sys.stdin.readline()
             if self.game_state == "WAITING_FOR_PLAYER_MOVE":
@@ -178,19 +212,30 @@ class GameOperation(Node):
         self.ai_move = ai_move
         self.publish_status()
 
-        if self.game_status in ("CHECKMATE_WHITE_WINS", "CHECKMATE_BLACK_WINS", "CHECKMATE", "STALEMATE", "DRAW_INSUFFICIENT_MATERIAL", "DRAW_REPETITION"):
+        game_is_over = self.game_status in TERMINAL_STATUSES
+
+        # Game ended with no AI move to play (the human's move ended the game): end now.
+        if game_is_over and not ai_move:
             self.get_logger().info(f"Game over: {self.game_status}")
             self.game_state = "GAME_OVER"
             self.publish_status()
             return
 
+        # There is an AI move to execute. If that move also ends the game (the AI delivered
+        # mate/stalemate), it must still be physically played first — remember to declare GAME_OVER
+        # once the arm reports completion (see move_complete_callback).
+        self.game_over_after_move = game_is_over
         self.move_number += 1
-        self.get_logger().info(f"AI move received: {ai_move} (capture={self.ai_is_capture}).")
+        if game_is_over:
+            self.get_logger().info(f"AI move received: {ai_move} (capture={self.ai_is_capture}). This move ends the game: {self.game_status}.")
+        else:
+            self.get_logger().info(f"AI move received: {ai_move} (capture={self.ai_is_capture}).")
         self.call_pick_and_place(ai_move, self.ai_is_capture)
 
     # Sends an async request to the arm to physically execute the AI's move.
     def call_pick_and_place(self, move_uci: str, is_capture: bool):
         self.game_state = "SENDING_TO_ARM"
+        self.arm_deadline = time.time() + ARM_TIMEOUT_S
         self.publish_status()
         request = MoveRobot.Request()
         request.best_uci = move_uci
@@ -198,7 +243,7 @@ class GameOperation(Node):
         self.future = self.pick_and_place_client.call_async(request)
         self.future.add_done_callback(self.pick_and_place_callback)
 
-    # Handles the arm response, returning to wait for the next human move or flagging an error.
+    # Handles the arm's immediate acknowledgement — the move was accepted and is now executing on the worker thread.
     def pick_and_place_callback(self, future: Future):
         try:
             response = future.result()
@@ -210,8 +255,40 @@ class GameOperation(Node):
             return
 
         if "ERROR" in status.upper():
+            self.get_logger().error(f"Robot rejected move: {status}")
+            self.game_state = "ERROR"
+            self.arm_deadline = None
+            self.publish_status()
+            return
+
+        # Only advance to ARM_MOVING if the move is still in flight — a fast completion may have already advanced us.
+        if self.game_state == "SENDING_TO_ARM":
+            self.game_state = "ARM_MOVING"
+            self.get_logger().info("Move accepted by arm. Executing — waiting for completion.")
+            self.publish_status()
+
+    # Fires when the arm reports the move is finished; advances to the human's turn or flags an error.
+    def move_complete_callback(self, msg: String):
+        # Ignore completions that don't correspond to a move we're currently waiting on.
+        if self.game_state not in ("SENDING_TO_ARM", "ARM_MOVING"):
+            return
+
+        status = msg.data
+        if "ERROR" in status.upper():
             self.get_logger().error(f"Robot execution failed: {status}")
             self.game_state = "ERROR"
+            self.arm_deadline = None
+            self.publish_status()
+            return
+
+        self.arm_deadline = None
+
+        # If the move just played was the game-ending move, declare the game over now that the arm
+        # has physically executed it.
+        if self.game_over_after_move:
+            self.get_logger().info(f"AI move complete. Game over: {self.game_status}")
+            self.game_state = "GAME_OVER"
+            self.game_over_after_move = False
             self.publish_status()
             return
 

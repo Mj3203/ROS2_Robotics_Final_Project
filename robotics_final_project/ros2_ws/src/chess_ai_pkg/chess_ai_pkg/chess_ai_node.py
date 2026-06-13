@@ -46,7 +46,7 @@ class ChessAIServer(Node):
         self.get_logger().info(f"Loading Stockfish from: {stockfish_binary_path}")
         try:
             self.stockfish = Stockfish(path=stockfish_binary_path)
-            self.stockfish.set_depth(23)
+            self.stockfish.set_depth(10)
             self.get_logger().info("Stockfish engine initialized successfully.")
         except Exception as e:
             self.get_logger().error(f"Failed to initialize Stockfish: {e}")
