@@ -13,7 +13,7 @@ from pymoveit2.gripper_interface import GripperInterface
 from custom_interface.srv import MoveRobot, SetSolenoid, SetMotor
 from pick_and_place_pkg.constants import (
     SQUARE_COORDS_M, BOARD_Z, BOARD_ORIGIN, HOVER_ABOVE_BOARD_M, CENTER_HOVER_ABOVE_BOARD_M,
-    CENTER_HOVER_Z, PLACE_Z_OFFSET, TOP_DOWN, CAPTURE_JOINTS,
+    CENTER_HOVER_Z, PLACE_Z_OFFSET, TOP_DOWN, CAPTURE_JOINTS, CAPTURE_POSE_M, CAPTURE_ORIENTATION,
     make_pose, square_center_in_world, compute_board_center
 )
 
@@ -291,10 +291,13 @@ class PickAndPlaceNode(Node):
             return False
 
         # Step 7 — move to drop position
+        drop_pose = make_pose(*CAPTURE_POSE_M, *CAPTURE_ORIENTATION)
         self.get_logger().info("[CAPTURE] Moving to drop position.")
-        if not self.move_to_joints(CAPTURE_JOINTS):
-            self.get_logger().error("[CAPTURE] Failed to reach drop position.")
-            return False
+        if not self.plan_and_execute_pose(drop_pose, cartesian=True):
+            self.get_logger().warn("[CAPTURE] Cartesian to drop position failed — trying joint space.")
+            if not self.plan_and_execute_pose(drop_pose, cartesian=False):
+                self.get_logger().error("[CAPTURE] Failed to reach drop position.")
+                return False
 
         # Step 8 — release piece into basket
         self.solenoid_control("sol off")
@@ -463,6 +466,20 @@ class PickAndPlaceNode(Node):
             self.get_logger().info("[TUNE] Reached center hover successfully.")
             return
 
+        if tune_mode == "capture_drop":
+            drop_pose = make_pose(*CAPTURE_POSE_M, *CAPTURE_ORIENTATION)
+            self.get_logger().info(f"[TUNE] Moving to capture drop position at x={CAPTURE_POSE_M[0]:.3f}, y={CAPTURE_POSE_M[1]:.3f}, z={CAPTURE_POSE_M[2]:.3f}")
+            if not self.plan_and_execute_pose(drop_pose, cartesian=True):
+                self.get_logger().warn("[TUNE] Cartesian move failed — trying joint space.")
+                if not self.plan_and_execute_pose(drop_pose, cartesian=False):
+                    self.get_logger().error("[TUNE] Failed to reach capture drop position.")
+                    return
+            pose = self.moveit2.compute_fk()
+            if pose:
+                self.get_logger().info(f"[TUNE] End effector: x={pose.pose.position.x:.4f}, y={pose.pose.position.y:.4f}, z={pose.pose.position.z:.4f}")
+            self.get_logger().info("[TUNE] Reached capture drop position successfully.")
+            return
+
         # Tune mode "origin" — hover above the board origin, then descend to board level so the position can be physically verified.
         if tune_mode == "origin":
             origin_x, origin_y, _ = BOARD_ORIGIN
@@ -548,7 +565,7 @@ class PickAndPlaceNode(Node):
                 self.get_logger().info(f"[TUNE] Lift complete at {tune_square}.")
                 return
 
-        self.get_logger().error(f"[TUNE] Unknown tune_mode '{tune_mode}'. Valid modes: home, hold, open, center, origin, square, lift, direct.")
+        self.get_logger().error(f"[TUNE] Unknown tune_mode '{tune_mode}'. Valid modes: home, hold, open, center, capture_drop, origin, square, lift, direct.")
 
     # Tests the full capture sequence on the configured test_square.
     def task_test_capture(self):
@@ -731,7 +748,7 @@ def main(args=None):
     try:
         node = PickAndPlaceNode(arduino_client_node)
     except RuntimeError:
-        rclpy.shutdown()
+        rclpy.try_shutdown()
         return
     # Three nodes, three executors, three independent wait sets. The MoveIt node (action client + motion)
     # is spun by its own executor — exactly the snake_test pattern, proven to run many moves with the
@@ -777,7 +794,7 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
     finally:
-        rclpy.shutdown()
+        rclpy.try_shutdown()
 
 
 if __name__ == "__main__":

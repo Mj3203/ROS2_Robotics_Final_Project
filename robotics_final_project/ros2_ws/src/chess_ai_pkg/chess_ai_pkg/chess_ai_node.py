@@ -236,7 +236,7 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
     chess_ai_server.destroy_node()
-    rclpy.shutdown()
+    rclpy.try_shutdown()
 
 
 if __name__ == '__main__':

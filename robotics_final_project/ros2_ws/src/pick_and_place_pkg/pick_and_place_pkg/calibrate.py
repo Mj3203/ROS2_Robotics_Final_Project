@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
 calibrate.py
-Interactive per-square calibration. Visits every square in the same order as snake_test.py's
-snake pattern; at each reachable square it descends to board level and prompts for a
-left/right and up/down correction (in inches) instead of relying on a single global
-rotation/origin fix.
+Interactive two-phase calibration, 16 stops total. Phase 1 sweeps row 1 (a1 through h1),
+one stop per column, to find a left/right adjustment per column. Phase 2 sweeps column a
+(a1 through a8), one stop per row, to find an up/down adjustment per row. At each stop the
+arm descends to board level and prompts for a single adjustment instead of relying on a
+single global rotation/origin fix.
 
 Run:
     ros2 run pick_and_place_pkg calibrate
@@ -21,7 +22,9 @@ from pick_and_place_pkg.constants import (
     BOARD_Z, HOVER_ABOVE_BOARD_M, PLACE_Z_OFFSET, TOP_DOWN, INCH,
     make_pose, square_center_in_world,
 )
-from pick_and_place_pkg.snake_test import generate_snake_pattern
+
+COLUMNS = "abcdefgh"
+ROWS = "12345678"
 
 
 class CalibrateNode(Node):
@@ -83,7 +86,7 @@ class CalibrateNode(Node):
 
     # Moves to hover above a square then descends to board level, mirroring snake_test.py's
     # visit_square hover/descend steps (joint-then-cartesian for hover, cartesian-only for descend).
-    # An optional left/right + up/down correction (inches) is applied on top of the square's base
+    # An optional left/right + up/down adjustment (inches) is applied on top of the square's base
     # world position, so this same method can redescend to a corrected spot during confirmation.
     def hover_and_descend(self, square: str, lr_inches: float = 0.0, ud_inches: float = 0.0) -> bool:
         center = square_center_in_world(square)
@@ -112,7 +115,7 @@ class CalibrateNode(Node):
         return True
 
     # Lifts back to hover above a square before moving on, mirroring snake_test.py's lift step.
-    # Uses the same confirmed correction as the last descend, so the lift starts from directly above it.
+    # Uses the same confirmed adjustment as the last descend, so the lift starts from directly above it.
     def lift_to_hover(self, square: str, lr_inches: float = 0.0, ud_inches: float = 0.0) -> bool:
         center = square_center_in_world(square)
         hover_z = BOARD_Z + HOVER_ABOVE_BOARD_M
@@ -128,88 +131,103 @@ class CalibrateNode(Node):
         self.get_logger().error(f"Failed to lift from {square}.")
         return False
 
-    # Prompts for the left/right and up/down corrections at the current square, returning inches.
-    def prompt_corrections(self, square: str) -> tuple:
-        lr_raw = input(f"Left/Right for {square} (inches, positive = toward h, negative = toward a, 0 if correct): ")
-        ud_raw = input(f"Up/Down for {square} (inches, positive = toward black, negative = toward white, 0 if correct): ")
-
+    # Prompts for a column's left/right adjustment, returning inches.
+    def prompt_column_adjustment(self, col: str) -> float:
+        raw = input(f"Left/Right adjustment for column {col} (inches, positive = toward h, negative = toward a, 0 if this column is already fine): ")
         try:
-            lr_inches = float(lr_raw)
+            return float(raw)
         except ValueError:
             print("Not a number — treating as 0.")
-            lr_inches = 0.0
+            return 0.0
 
+    # Prompts for a row's up/down adjustment, returning inches.
+    def prompt_row_adjustment(self, row: str) -> float:
+        raw = input(f"Up/Down adjustment for row {row} (inches, positive = toward black, negative = toward white, 0 if this row is already fine): ")
         try:
-            ud_inches = float(ud_raw)
+            return float(raw)
         except ValueError:
             print("Not a number — treating as 0.")
-            ud_inches = 0.0
+            return 0.0
 
-        return lr_inches, ud_inches
+    # Visits <col>1, prompts for a left/right adjustment, and confirms-and-redescends until accepted.
+    def calibrate_column(self, col: str) -> float:
+        square = f"{col}1"
+        self.get_logger().info(f"Visiting {square} for column calibration.")
+        if not self.hover_and_descend(square):
+            self.get_logger().warn(f"{square} is unreachable — column '{col}' left at 0.0.")
+            return 0.0
 
-    # Visits every square in snake order, descending and prompting for a correction at each reachable
-    # one, then prints a summary of skipped squares and a paste-ready per-square correction dict.
+        lr_inches = self.prompt_column_adjustment(col)
+
+        if lr_inches != 0.0:
+            while True:
+                if not self.hover_and_descend(square, lr_inches, 0.0):
+                    self.get_logger().error(f"Failed to move to corrected position for {square}. Keeping last entered adjustment.")
+                    break
+
+                confirm = input("Confirm centered now? (y/n): ").strip().lower()
+                if confirm == "y":
+                    break
+
+                lr_inches += self.prompt_column_adjustment(col)
+
+        self.lift_to_hover(square, lr_inches, 0.0)
+        return lr_inches
+
+    # Visits a<row>, prompts for an up/down adjustment, and confirms-and-redescends until accepted.
+    def calibrate_row(self, row: str) -> float:
+        square = f"a{row}"
+        self.get_logger().info(f"Visiting {square} for row calibration.")
+        if not self.hover_and_descend(square):
+            self.get_logger().warn(f"{square} is unreachable — row '{row}' left at 0.0.")
+            return 0.0
+
+        ud_inches = self.prompt_row_adjustment(row)
+
+        if ud_inches != 0.0:
+            while True:
+                if not self.hover_and_descend(square, 0.0, ud_inches):
+                    self.get_logger().error(f"Failed to move to corrected position for {square}. Keeping last entered adjustment.")
+                    break
+
+                confirm = input("Confirm centered now? (y/n): ").strip().lower()
+                if confirm == "y":
+                    break
+
+                ud_inches += self.prompt_row_adjustment(row)
+
+        self.lift_to_hover(square, 0.0, ud_inches)
+        return ud_inches
+
+    # Runs both calibration phases in sequence, then prints the two adjustment dicts.
     def run_calibration(self):
-        squares = generate_snake_pattern()
-        total = len(squares)
-        self.get_logger().info(f"Starting per-square calibration across {total} squares.")
+        self.get_logger().info("=== Phase 1: column calibration (row 1) ===")
+        column_adjust = {}
+        for col in COLUMNS:
+            column_adjust[col] = self.calibrate_column(col)
 
-        results = {}
-        skipped = []
+        self.get_logger().info("=== Phase 2: row calibration (column a) ===")
+        row_adjust = {}
+        for row in ROWS:
+            row_adjust[row] = self.calibrate_row(row)
 
-        for i, square in enumerate(squares):
-            self.get_logger().info(f"[{i + 1}/{total}] Visiting {square}.")
+        self.print_summary(column_adjust, row_adjust)
 
-            if not self.hover_and_descend(square):
-                self.get_logger().warn(f"{square} is unreachable — skipping.")
-                skipped.append(square)
-                continue
-
-            lr_inches, ud_inches = self.prompt_corrections(square)
-
-            # A nonzero correction means the person wants to see it applied before confirming — keep
-            # redescending to the accumulated total and asking again until they answer "y".
-            if lr_inches != 0.0 or ud_inches != 0.0:
-                while True:
-                    if not self.hover_and_descend(square, lr_inches, ud_inches):
-                        self.get_logger().error(f"Failed to move to corrected position for {square}. Keeping last entered correction.")
-                        break
-
-                    confirm = input("Confirm centered now? (y/n): ").strip().lower()
-                    if confirm == "y":
-                        break
-
-                    extra_lr, extra_ud = self.prompt_corrections(square)
-                    lr_inches += extra_lr
-                    ud_inches += extra_ud
-
-            results[square] = (lr_inches, ud_inches)
-
-            self.lift_to_hover(square, lr_inches, ud_inches)
-
-        self.print_summary(results, skipped)
-
-    # Prints the skipped-square list and a paste-ready PER_SQUARE_CORRECTIONS_INCHES dict literal.
-    def print_summary(self, results: dict, skipped: list):
+    # Prints both adjustment dicts, labeled, with 0.0 clearly called out as "no change needed".
+    def print_summary(self, column_adjust: dict, row_adjust: dict):
         self.get_logger().info("=" * 60)
         self.get_logger().info("CALIBRATION SUMMARY")
         self.get_logger().info("=" * 60)
 
-        if skipped:
-            self.get_logger().warn(f"Skipped (unreachable) squares: {skipped}")
-        else:
-            self.get_logger().info("No squares were skipped.")
+        print("\n=== Column adjustments (apply to all squares in that column) ===")
+        print("0.0 means no change needed for that column.")
+        column_entries = ", ".join(f"'{col}': {column_adjust[col]}" for col in COLUMNS)
+        print(f"column_adjust = {{{column_entries}}}")
 
-        print("\nPER_SQUARE_CORRECTIONS_INCHES = {")
-        for col in "abcdefgh":
-            for row in "12345678":
-                square = f"{col}{row}"
-                if square in results:
-                    lr, ud = results[square]
-                    print(f"    '{square}': ({lr}, {ud}),")
-                else:
-                    print(f"    # '{square}': SKIPPED - unreachable")
-        print("}")
+        print("\n=== Row adjustments (apply to all squares in that row) ===")
+        print("0.0 means no change needed for that row.")
+        row_entries = ", ".join(f"'{row}': {row_adjust[row]}" for row in ROWS)
+        print(f"row_adjust = {{{row_entries}}}")
 
     def destroy_node(self):
         super().destroy_node()
@@ -221,7 +239,7 @@ def main(args=None):
         node = CalibrateNode()
     except Exception as e:
         print(f"Failed to initialize CalibrateNode: {e}")
-        rclpy.shutdown()
+        rclpy.try_shutdown()
         return
 
     executor = MultiThreadedExecutor(num_threads=2)
@@ -233,7 +251,7 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
     finally:
-        rclpy.shutdown()
+        rclpy.try_shutdown()
 
 
 if __name__ == "__main__":

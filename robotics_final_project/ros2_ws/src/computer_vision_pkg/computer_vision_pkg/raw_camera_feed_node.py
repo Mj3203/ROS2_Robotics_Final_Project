@@ -16,7 +16,10 @@ class Raw_Camera_Feed(Node):
 
     def setup_camera(self):
         self.bridge = CvBridge()
-        self.cap = cv2.VideoCapture(0)
+        # /dev/videoN numbering shifts across reboots/replugs (this camera has landed on index 0, 1,
+        # and elsewhere at different times) — the by-id path is keyed to the camera's USB serial, so it
+        # stays correct regardless of enumeration order.
+        self.cap = cv2.VideoCapture('/dev/v4l/by-id/usb-046d_1080P_Pro_Stream_7C4C89AF-video-index0')
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
 
@@ -50,7 +53,7 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
     raw_camera_feed_node.destroy_node()
-    rclpy.shutdown()
+    rclpy.try_shutdown()
 
 if __name__ == '__main__':
     main()

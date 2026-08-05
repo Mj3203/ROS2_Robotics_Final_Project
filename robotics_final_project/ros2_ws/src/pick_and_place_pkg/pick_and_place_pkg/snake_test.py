@@ -181,7 +181,7 @@ def main(args=None):
         node = SnakeTestNode()
     except Exception as e:
         print(f"Failed to initialize SnakeTestNode: {e}")
-        rclpy.shutdown()
+        rclpy.try_shutdown()
         return
 
     executor = MultiThreadedExecutor(num_threads=2)
@@ -193,7 +193,7 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
     finally:
-        rclpy.shutdown()
+        rclpy.try_shutdown()
 
 
 if __name__ == "__main__":
