@@ -24,6 +24,7 @@ RUN pip install --no-cache-dir \
     stockfish \
     chess \
     pyserial \
+    --ignore-installed filelock \
     --break-system-packages
 
 # -------------------------------------------------------------
