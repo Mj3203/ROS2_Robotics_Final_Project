@@ -14,21 +14,21 @@ Created an autonomous chess-playing robot that uses a Kinova Gen3 Lite robot arm
 
 Each portion is independent, so each package/node can be debugged, restarted, or replaced independently of one another.
 
-### How they communicate
+## Topics and Services
 
 **Topics (continuous streams):**
 
 - `raw_camera_feed` — live camera image (published by `computer_vision_pkg`)
 - `processed_camera_feed` — straightened top-down board view (published by `computer_vision_pkg`)
-- `live_detection_feed` — board view with YOLO detections drawn on (published by `computer_vision_pkg`)
-- `game_status_feed` — current game state and move info, used by the display (published by `game_operation_pkg`)
+- `live_detection_feed` — board view with YOLO detections(published by `computer_vision_pkg`)
+- `game_status_feed` — current game state and move info for the display (published by `game_operation_pkg`)
 
 **Services (request/response, defined in `custom_interface`):**
 
-- `ScanBoard` — "scan the board and tell me what pieces are where" → served by `computer_vision_pkg`
-- `ValidateMove` — "is the scanned board a legal move?" → served by `chess_ai_pkg`
-- `GetBestMove` — "here's the human's move, what's the robot's reply?" → served by `chess_ai_pkg`
-- `MoveRobot` — "physically make this move (and capture if needed)" → served by `pick_and_place_pkg`
+- `ScanBoard` — "scan the board and locates pieces" (served by `computer_vision_pkg`)
+- `ValidateMove` — "validates the move" (`served by `chess_ai_pkg`)
+- `GetBestMove` — "returns the best move" (`served by `chess_ai_pkg`)
+- `MoveRobot` — "moves the robot arm" (`served by `pick_and_place_pkg`)
 
 ---
 
