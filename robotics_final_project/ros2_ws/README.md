@@ -20,8 +20,7 @@ At a high level:
 
 | Package | Responsibility |
 |---|---|
-| `computer_vision_pkg` | Captures the raw camera feed and warps it into a flat, top-down view of the board (using ArUco markers at the corners). |
-| `object_detection_pkg` | Runs YOLO on the warped image to detect each piece and report the board state. Also serves on-demand board scans. |
+| `computer_vision_pkg` | Captures the raw camera feed, warps it into a flat top-down view using ArUco corner markers, then runs YOLO to detect each piece and report the board state (also serves on-demand board scans). |
 | `chess_ai_pkg` | Owns the authoritative chess board. Validates human moves and uses Stockfish to choose the robot's moves. |
 | `pick_and_place_pkg` | Drives the Kinova arm and suction cup to physically move and capture pieces. |
 | `game_operation_pkg` | The conductor. Runs the turn-by-turn game loop and calls the other packages in the right order. |
@@ -34,12 +33,12 @@ At a high level:
 
 - `raw_camera_feed` — live camera image (published by `computer_vision_pkg`)
 - `processed_camera_feed` — straightened top-down board view (published by `computer_vision_pkg`)
-- `live_detection_feed` — board view with YOLO detections drawn on (published by `object_detection_pkg`)
+- `live_detection_feed` — board view with YOLO detections drawn on (published by `computer_vision_pkg`)
 - `game_status_feed` — current game state and move info, used by the display (published by `game_operation_pkg`)
 
 **Services (request/response, defined in `custom_interface`):**
 
-- `ScanBoard` — "scan the board and tell me what pieces are where" → served by `object_detection_pkg`
+- `ScanBoard` — "scan the board and tell me what pieces are where" → served by `computer_vision_pkg`
 - `ValidateMove` — "is the scanned board a legal move?" → served by `chess_ai_pkg`
 - `GetBestMove` — "here's the human's move, what's the robot's reply?" → served by `chess_ai_pkg`
 - `MoveRobot` — "physically make this move (and capture if needed)" → served by `pick_and_place_pkg`
@@ -64,7 +63,7 @@ At startup, the operator is asked whether the robot plays **White** or **Black**
 ### Each turn, from the robot's perspective
 
 1. **Wait for the human.** The human makes their move physically and presses **ENTER**.
-2. **Scan the board.** `game_operation_pkg` calls `ScanBoard`; `object_detection_pkg` runs YOLO and returns the current piece layout.
+2. **Scan the board.** `game_operation_pkg` calls `ScanBoard`; `computer_vision_pkg` runs YOLO and returns the current piece layout.
 3. **Validate the move.** `game_operation_pkg` calls `ValidateMove`; `chess_ai_pkg` compares the scan against the legal moves from the current position.
    - If the scan doesn't match any legal move, the move is rejected with a reason and the human is asked to redo it (back to step 1).
 4. **Ask the AI for a reply.** Once the human's move is valid, `game_operation_pkg` calls `GetBestMove`. `chess_ai_pkg` applies the human's move, runs Stockfish, and returns the robot's best move along with whether it is a **capture** and the resulting **game status** (e.g. check, checkmate, stalemate, draw).
@@ -157,7 +156,7 @@ Run this once per node you want to start.
 # Vision pipeline
 ros2 run computer_vision_pkg raw_camera_feed
 ros2 run computer_vision_pkg homography_transform
-ros2 run object_detection_pkg scan_and_detect
+ros2 run computer_vision_pkg scan_and_detect
 
 # Chess engine and game coordinator
 ros2 run chess_ai_pkg chess_ai

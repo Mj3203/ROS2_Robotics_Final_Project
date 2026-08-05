@@ -19,8 +19,11 @@ def get_src_coords(rvec, tvec, camera_intrinsics_matrix, dist_coeffs):
     pixel_coords, jacobian = cv2.projectPoints(origin, rvec, tvec, camera_intrinsics_matrix, dist_coeffs)
     return int(pixel_coords[0][0][0]), int(pixel_coords[0][0][1])
 
-# Sorts detected ArUco markers numerically by ID so they consistently map to the correct board corners
+# Sorts detected ArUco markers numerically by ID so they consistently map to the correct board corners, returning (None, None) if the four unique IDs 0-3 are not all present
 def rearrange_order_of_detected_tags(corners, ids):
+    # A count of 4 does not guarantee all 4 unique marker IDs are present, since ArUco can return a duplicate ID from a misdetection, so verify the exact set {0, 1, 2, 3} before reordering
+    if set(ids.flatten().tolist()) != {0, 1, 2, 3}:
+        return None, None
     reordered_corners = []
     reordered_ids = []
     for i in range(4):
@@ -88,6 +91,15 @@ class Homography_Transform(Node):
         aruco_marker_size = 0.040
         obj_points = get_chessboard_corner_obj_points(aruco_marker_size)
         reordered_corners, reordered_ids = rearrange_order_of_detected_tags(corners, ids)
+
+        # Error: The 4 detected IDs are not the unique required IDs 0-3 (e.g. a duplicate misdetection)
+        if reordered_corners is None or reordered_ids is None:
+            self.get_logger().error(f"ArUco marker IDs invalid — expected unique IDs 0-3, got: {ids.flatten().tolist()}")
+            return None
+        # Error: Reordering did not yield exactly 4 corners and IDs before pose estimation
+        if len(reordered_corners) != 4 or len(reordered_ids) != 4:
+            self.get_logger().error(f"Expected 4 reordered markers before solvePnP, got {len(reordered_corners)} corners and {len(reordered_ids)} IDs.")
+            return None
 
         src_coords = []
         for i in range(4):

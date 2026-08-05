@@ -140,7 +140,7 @@ cd /robotics_final_project/ros2_ws && colcon build --packages-select <pkg> && so
 ```bash
 ros2 run computer_vision_pkg raw_camera_feed
 ros2 run computer_vision_pkg homography_transform
-ros2 run object_detection_pkg scan_and_detect
+ros2 run computer_vision_pkg scan_and_detect
 ros2 run chess_ai_pkg chess_ai
 ros2 run display_output_pkg display_output
 ros2 run pick_and_place_pkg pick_and_place        # serve mode (waits for move_robot)

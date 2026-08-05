@@ -10,7 +10,7 @@ TOP_DOWN = (-0.7071, 0.7071, 0.0, 0.0)
 CENTER_HOVER_Z = 0.4166
 
 import math
-BOARD_ROTATION_RAD = math.radians(-1.6)
+BOARD_ROTATION_RAD = math.radians(0)
 CAPTURE_JOINTS = [math.radians(a) for a in [-11, -21, 65, 90, 94, -99]]
 
 # Square width (m) per column along the letter axis — columns d and e are slightly narrower than the rest.

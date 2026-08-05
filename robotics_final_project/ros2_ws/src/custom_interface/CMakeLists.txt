@@ -18,6 +18,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   srv/GetBestMove.srv
   srv/MoveRobot.srv
   srv/ValidateMove.srv
+  srv/SetSolenoid.srv
+  srv/SetMotor.srv
 )
 
 if(BUILD_TESTING)

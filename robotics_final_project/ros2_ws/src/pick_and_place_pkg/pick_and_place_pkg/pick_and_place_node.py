@@ -2,7 +2,6 @@ import time
 import threading
 import queue
 import math
-import os
 import rclpy
 from rclpy.node import Node
 from rclpy.executors import SingleThreadedExecutor
@@ -11,13 +10,12 @@ from geometry_msgs.msg import Pose
 from std_msgs.msg import String
 from pymoveit2 import MoveIt2
 from pymoveit2.gripper_interface import GripperInterface
-from custom_interface.srv import MoveRobot
+from custom_interface.srv import MoveRobot, SetSolenoid, SetMotor
 from pick_and_place_pkg.constants import (
     SQUARE_COORDS_M, BOARD_Z, BOARD_ORIGIN, HOVER_ABOVE_BOARD_M, CENTER_HOVER_ABOVE_BOARD_M,
     CENTER_HOVER_Z, PLACE_Z_OFFSET, TOP_DOWN, CAPTURE_JOINTS,
     make_pose, square_center_in_world, compute_board_center
 )
-from pick_and_place_pkg.arduino_client import ArduinoSerialClient, SERIAL_AVAILABLE, list_ports
 
 # from std_msgs.msg import String  # Uncomment when button integration is ready
 
@@ -34,7 +32,6 @@ class PickAndPlaceNode(Node):
         self.setup_parameters()
         self.setup_moveit()
         self.setup_gripper()
-        self.setup_arduino()
         if not self.wait_for_moveit():
             self.get_logger().error("MoveIt not available. Shutting down.")
             raise RuntimeError("MoveIt not available.")
@@ -45,6 +42,9 @@ class PickAndPlaceNode(Node):
         # proven to run many moves without wedging. The move_complete result is published here.
         self.move_complete_pub = self.create_publisher(String, 'move_complete', 10)
         self.motion_queue = queue.Queue()
+        # Solenoid and motor are driven by the dedicated arduino_node over services.
+        self.set_solenoid_client = self.create_client(SetSolenoid, 'set_solenoid')
+        self.set_motor_client = self.create_client(SetMotor, 'set_motor')
         self.get_logger().info("PickAndPlaceNode is ready.")
 
     # -------------------------
@@ -53,10 +53,6 @@ class PickAndPlaceNode(Node):
 
     # Declares all ROS parameters and the home joint configuration.
     def setup_parameters(self):
-        self.declare_parameter("arduino_enabled", True)
-        self.declare_parameter("arduino_port", "/dev/ttyUSB0")
-        self.declare_parameter("arduino_baud", 115200)
-        self.declare_parameter("auto_detect_arduino", True)
         self.declare_parameter("task", "serve")
         self.declare_parameter("tune_mode", "center")
         self.declare_parameter("tune_square", "b3")
@@ -91,7 +87,7 @@ class PickAndPlaceNode(Node):
                 node=self,
                 gripper_joint_names=["right_finger_bottom_joint"],
                 open_gripper_joint_positions=[0.0],
-                closed_gripper_joint_positions=[0.8],
+                closed_gripper_joint_positions=[0.85],
                 gripper_group_name="gripper",
                 gripper_command_action_name="/gen3_lite_2f_gripper_controller/gripper_cmd",
                 ignore_new_calls_while_executing=True,
@@ -100,42 +96,6 @@ class PickAndPlaceNode(Node):
         except Exception as e:
             self.gripper = None
             self.get_logger().warn(f"GripperInterface initialization failed: {e}")
-
-    # Connects to the Arduino serial client, auto-detecting the port unless disabled.
-    def setup_arduino(self):
-        self.arduino = None
-        enabled = self.get_parameter("arduino_enabled").get_parameter_value().bool_value
-        if not enabled:
-            self.get_logger().info("Arduino disabled via parameter.")
-            return
-
-        port = self.get_parameter("arduino_port").get_parameter_value().string_value
-        baud = self.get_parameter("arduino_baud").get_parameter_value().integer_value
-
-        if SERIAL_AVAILABLE and list_ports is not None:
-            try:
-                byid_dir = "/dev/serial/by-id"
-                if os.path.isdir(byid_dir):
-                    entries = sorted(os.listdir(byid_dir))
-                    if entries:
-                        port = os.path.join(byid_dir, entries[0])
-                        self.get_logger().info(f"Auto-detected Arduino by-id: {port}")
-                else:
-                    for p in list_ports.comports():
-                        desc = (p.description or "").lower()
-                        if "arduino" in desc or "usb serial" in desc or "ch341" in desc or "ftdi" in desc:
-                            port = p.device
-                            self.get_logger().info(f"Auto-detected Arduino: {port}")
-                            break
-            except Exception as e:
-                self.get_logger().debug(f"Auto-detect failed: {e}")
-
-        try:
-            self.arduino = ArduinoSerialClient(node=self, port=port, baud=baud)
-            self.get_logger().info(f"Arduino client enabled on {port} @ {baud}")
-        except Exception as e:
-            self.get_logger().warn(f"Failed to initialize Arduino client: {e}")
-            self.arduino = None
 
     # Polls MoveIt with compute_fk until it responds or the timeout elapses.
     def wait_for_moveit(self, timeout_s: int = 10) -> bool:
@@ -177,7 +137,7 @@ class PickAndPlaceNode(Node):
                 pose=pose,
                 cartesian=cartesian,
                 max_step=0.005,
-                cartesian_fraction_threshold=0.90 if cartesian else None,
+                cartesian_fraction_threshold=0.85 if cartesian else None,
             )
             self.get_logger().info(f"[PLAN] moveit2.plan() returned — traj is None: {traj is None}")
             if traj is None:
@@ -218,16 +178,28 @@ class PickAndPlaceNode(Node):
     # Solenoid
     # -------------------------
 
-    # Turns the suction solenoid on or off via the Arduino, with a settle delay after turning off.
+    # Calls an Arduino bool-in/bool-out service from the motion thread and returns whether the write succeeded, waiting briefly for the response.
+    def call_arduino_service(self, client, request):
+        if not client.wait_for_service(timeout_sec=2.0):
+            return False
+        future = client.call_async(request)
+        start = time.time()
+        while rclpy.ok() and not future.done():
+            if time.time() - start > 5.0:
+                return False
+            time.sleep(0.01)
+        result = future.result()
+        return bool(result.success) if result is not None else False
+
+    # Turns the suction solenoid on or off via the arduino_node service, with a settle delay after turning off.
     def solenoid_control(self, command: str):
         if command not in ("sol on", "sol off"):
             self.get_logger().error(f"Invalid solenoid command: '{command}'. Use 'sol on' or 'sol off'.")
             return
-        if self.arduino is None:
-            self.get_logger().warn("Solenoid command skipped — no Arduino client available.")
-            return
+        request = SetSolenoid.Request()
+        request.state = (command == "sol on")
         try:
-            ok = self.arduino.send_command(command)
+            ok = self.call_arduino_service(self.set_solenoid_client, request)
             if ok:
                 self.get_logger().info(f"Solenoid: {command}")
             else:
@@ -238,16 +210,15 @@ class PickAndPlaceNode(Node):
         if command == "sol off":
             time.sleep(0.2)
 
-    # Turns the motor on or off via the Arduino, with a settle delay after turning off.
+    # Turns the motor on or off via the arduino_node service, with a settle delay after turning off.
     def motor_control(self, command: str):
         if command not in ("motor on", "motor off"):
             self.get_logger().error(f"Invalid motor command: '{command}'. Use 'motor on' or 'motor off'.")
             return
-        if self.arduino is None:
-            self.get_logger().warn("Motor command skipped — no Arduino client available.")
-            return
+        request = SetMotor.Request()
+        request.state = (command == "motor on")
         try:
-            ok = self.arduino.send_command(command)
+            ok = self.call_arduino_service(self.set_motor_client, request)
             if ok:
                 self.get_logger().info(f"Motor: {command}")
             else:
@@ -705,10 +676,8 @@ class PickAndPlaceNode(Node):
     # Lifecycle
     # -------------------------
 
-    # Closes the Arduino connection and shuts the node down.
+    # Shuts the node down.
     def destroy_node(self):
-        if self.arduino:
-            self.arduino.stop_serial_connection()
         super().destroy_node()
 
 
@@ -788,8 +757,6 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
     finally:
-        if node.arduino:
-            node.arduino.stop_serial_connection()
         rclpy.shutdown()
 
 

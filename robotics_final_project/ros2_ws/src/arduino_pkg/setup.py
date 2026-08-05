@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'object_detection_pkg'
+package_name = 'arduino_pkg'
 
 setup(
     name=package_name,
@@ -10,15 +10,13 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        (f'share/{package_name}/trained_models', 
-         ['object_detection_pkg/trained_models/best.pt']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='mj3203',
-    maintainer_email='mj3203@gmail.com',
-    description='Object detection: YOLO piece detection and board state scanning',
-    license='Apache-2.0',
+    maintainer='root',
+    maintainer_email='root@todo.todo',
+    description='TODO: Package description',
+    license='TODO: License declaration',
     extras_require={
         'test': [
             'pytest',
@@ -26,7 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'scan_and_detect = object_detection_pkg.scan_and_detect_node:main',
+            'arduino_node = arduino_pkg.arduino_node:main',
         ],
     },
 )

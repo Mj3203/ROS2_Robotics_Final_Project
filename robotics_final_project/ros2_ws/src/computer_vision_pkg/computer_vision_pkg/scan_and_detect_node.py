@@ -32,7 +32,7 @@ class Scan_And_Detect(Node):
 
     # Loads the trained YOLO model from the package share directory.
     def setup_yolo(self):
-        pkg_share = get_package_share_directory('object_detection_pkg')
+        pkg_share = get_package_share_directory('computer_vision_pkg')
         model_path = os.path.join(pkg_share, 'trained_models', 'best.pt')
         self.model = YOLO(model_path)
 

@@ -75,7 +75,7 @@ class SnakeTestNode(Node):
                 pose=pose,
                 cartesian=cartesian,
                 max_step=0.005,
-                cartesian_fraction_threshold=0.90 if cartesian else None,
+                cartesian_fraction_threshold=0.85 if cartesian else None,
             )
             if traj is None:
                 self.get_logger().error(
