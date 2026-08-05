@@ -14,27 +14,11 @@ Created an autonomous chess-playing robot that uses a Kinova Gen3 Lite robot arm
 
 Each portion is independent, so each package/node can be debugged, restarted, or replaced independently of one another.
 
-## Topics and Services
-
-**Topics (continuous streams):**
-
-- `raw_camera_feed` — live camera image (published by `computer_vision_pkg`)
-- `processed_camera_feed` — straightened top-down board view (published by `computer_vision_pkg`)
-- `live_detection_feed` — board view with YOLO detections(published by `computer_vision_pkg`)
-- `game_status_feed` — current game state and move info for the display (published by `game_operation_pkg`)
-
-**Services (request/response, defined in `custom_interface`):**
-
-- `ScanBoard` — "scan the board and locates pieces" (served by `computer_vision_pkg`)
-- `ValidateMove` — "validates the move" (`served by `chess_ai_pkg`)
-- `GetBestMove` — "returns the best move" (`served by `chess_ai_pkg`)
-- `MoveRobot` — "moves the robot arm" (`served by `pick_and_place_pkg`)
-
 ---
 
-## Game Loop
+## Game Sequence
 
-At startup, the operator is asked whether the robot plays **White** or **Black**. From there the game runs automatically, one turn at a time.
+At startup, the player is asked which color they would like to play: **White** or **Black**.
 
 ### If the robot plays White (moves first)
 
@@ -49,16 +33,16 @@ At startup, the operator is asked whether the robot plays **White** or **Black**
 
 ### Each turn, from the robot's perspective
 
-1. **Wait for the human.** The human makes their move physically and presses **ENTER**.
+1. **Wait for the human.** The human makes their move physically and presses the button.
 2. **Scan the board.** `game_operation_pkg` calls `ScanBoard`; `computer_vision_pkg` runs YOLO and returns the current piece layout.
 3. **Validate the move.** `game_operation_pkg` calls `ValidateMove`; `chess_ai_pkg` compares the scan against the legal moves from the current position.
-   - If the scan doesn't match any legal move, the move is rejected with a reason and the human is asked to redo it (back to step 1).
-4. **Ask the AI for a reply.** Once the human's move is valid, `game_operation_pkg` calls `GetBestMove`. `chess_ai_pkg` applies the human's move, runs Stockfish, and returns the robot's best move along with whether it is a **capture** and the resulting **game status** (e.g. check, checkmate, stalemate, draw).
+   - If the scan doesn't match any legal move, the move is rejected with a reason and the player must redo their move (back to step 1).
+4. **Ask the AI for a reply.** `game_operation_pkg` calls `GetBestMove`. `chess_ai_pkg` applies the player's move internally, runs Stockfish, and returns the robot's best move and game status if necessary (e.g. check, checkmate, stalemate, draw).
 5. **Check for game over.** If the status is checkmate/stalemate/draw, the loop ends and the result is reported.
 6. **Execute the robot's move.** Otherwise `game_operation_pkg` calls `MoveRobot` with the move and the capture flag; `pick_and_place_pkg` drives the arm:
    - **Normal move:** hover over the source square → descend → suction on → lift → travel to the target square → descend → suction off → retract.
    - **Capture handling:** if the move is a capture, the arm first picks up the enemy piece on the target square and drops it into a side basket, **then** moves its own piece onto that square.
-7. **Back to waiting.** Control returns to step 1 for the human's next move.
+7. **Restart the loop.** Control returns to step 1 for the human's next move.
 
 Throughout, `game_operation_pkg` publishes the current state to `game_status_feed`, so `display_output_pkg` always shows the latest move, status, and log.
 
