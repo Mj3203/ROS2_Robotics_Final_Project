@@ -8,9 +8,9 @@ Created an autonomous chess-playing robot that uses a Kinova Gen3 Lite robot arm
 1. **Vision** — A camera captures the board. ArUco tags at the corners of the chess board allows the homography node warp the image into a top-down view, correcting for any angle/position.
 2. **Object Detection** — A custom trained YOLO model scans the feed and maps every detected piece to a board square, producing a JSON representation of the current board state.
 3. **Chess AI** — The scanned board state is compared against legal chess moves to determine what the human just played. Stockfish receives the validated move and calculates the best response.
-5. **Pick and Place** — The robot arm uses MoveIt2 to plans and executes the it's moves.
-6. **Game Operation** — A central node loops the steps listed above in a specified order, depending on which color the player chooses to play.
-7. **Display Output** — Camera feeds, game status, and move history are shown on a physical display.
+4. **Pick and Place** — The robot arm uses MoveIt2 to plan and execute its moves.
+5. **Game Operation** — A central node loops the steps listed above in a specified order, depending on which color the player chooses to play.
+6. **Display Output** — Camera feeds, game status, and move history are shown on a physical display.
 
 Each portion is independent, so each package/node can be debugged, restarted, or replaced independently of one another.
 

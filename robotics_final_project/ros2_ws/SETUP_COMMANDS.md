@@ -11,36 +11,71 @@ Launch the full arm stack (driver + MoveIt + RViz) with a single command:
 ros2 launch kinova_gen3_lite_moveit_config robot.launch.py robot_ip:=192.168.1.10
 ```
 
-### Additional terminals — open more shells in the running container
-
-Each node runs in its own shell. To open another shell inside the already-running container:
+### Terminal 2 — Raw camera feed: computer_vision_pkg raw_camera_feed
 
 ```bash
 docker exec -it $(docker ps -q) bash --login
+source /robotics_final_project/ros2_ws/install/setup.bash
+ros2 run computer_vision_pkg raw_camera_feed
 ```
 
-Run this once per node you want to start.
-
-### Running each node
+### Terminal 3 — Homography transform: computer_vision_pkg homography_transform
 
 ```bash
-# Vision pipeline
-ros2 run computer_vision_pkg raw_camera_feed
+docker exec -it $(docker ps -q) bash --login
+source /robotics_final_project/ros2_ws/install/setup.bash
 ros2 run computer_vision_pkg homography_transform
+```
+
+### Terminal 4 — Scan and detect: computer_vision_pkg scan_and_detect
+
+```bash
+docker exec -it $(docker ps -q) bash --login
+source /robotics_final_project/ros2_ws/install/setup.bash
 ros2 run computer_vision_pkg scan_and_detect
+```
 
-# Chess engine and game coordinator
+### Terminal 5 — Chess AI: chess_ai_pkg chess_ai
+
+```bash
+docker exec -it $(docker ps -q) bash --login
+source /robotics_final_project/ros2_ws/install/setup.bash
 ros2 run chess_ai_pkg chess_ai
-ros2 run game_operation_pkg game_operation
+```
 
-# Display
-ros2 run display_output_pkg display_output
+### Terminal 6 — Arduino bridge: arduino_pkg arduino_node
 
-# Arm — serve mode (waits for MoveRobot requests during a game)
+```bash
+docker exec -it $(docker ps -q) bash --login
+source /robotics_final_project/ros2_ws/install/setup.bash
+ros2 run arduino_pkg arduino_node
+```
+
+### Terminal 7 — Pick and place: pick_and_place_pkg pick_and_place
+
+```bash
+docker exec -it $(docker ps -q) bash --login
+source /robotics_final_project/ros2_ws/install/setup.bash
 ros2 run pick_and_place_pkg pick_and_place
 ```
 
 `pick_and_place` defaults to **serve** mode, where it waits for `MoveRobot` requests from the game loop. It also supports a `home` task and a set of tune modes (below).
+
+### Terminal 8 — Game operation: game_operation_pkg game_operation
+
+```bash
+docker exec -it $(docker ps -q) bash --login
+source /robotics_final_project/ros2_ws/install/setup.bash
+ros2 run game_operation_pkg game_operation
+```
+
+### Terminal 9 — Display output: display_output_pkg display_output
+
+```bash
+docker exec -it $(docker ps -q) bash --login
+source /robotics_final_project/ros2_ws/install/setup.bash
+ros2 run display_output_pkg display_output
+```
 
 ---
 
