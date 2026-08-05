@@ -26,6 +26,7 @@ setup(
         'console_scripts': [
             'pick_and_place = pick_and_place_pkg.pick_and_place_node:main',
             'snake_test = pick_and_place_pkg.snake_test:main',
+            'calibrate = pick_and_place_pkg.calibrate:main',
         ],
     },
 )

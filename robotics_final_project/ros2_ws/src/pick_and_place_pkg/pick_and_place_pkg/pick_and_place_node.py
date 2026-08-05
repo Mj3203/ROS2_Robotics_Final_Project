@@ -23,7 +23,7 @@ from pick_and_place_pkg.constants import (
 class PickAndPlaceNode(Node):
 
     # Initializes the node, creates the move_robot service, runs all setup steps, and fails fast if MoveIt is unavailable.
-    def __init__(self):
+    def __init__(self, arduino_client_node):
         super().__init__("pick_and_place_node")
         # The move_robot service is NOT created here — it lives on a separate MoveRobotServiceNode with
         # its OWN executor (see main()). Sharing one executor between the move_group action client and
@@ -42,9 +42,9 @@ class PickAndPlaceNode(Node):
         # proven to run many moves without wedging. The move_complete result is published here.
         self.move_complete_pub = self.create_publisher(String, 'move_complete', 10)
         self.motion_queue = queue.Queue()
-        # Solenoid and motor are driven by the dedicated arduino_node over services.
-        self.set_solenoid_client = self.create_client(SetSolenoid, 'set_solenoid')
-        self.set_motor_client = self.create_client(SetMotor, 'set_motor')
+        # Solenoid and motor are driven by the dedicated arduino_node over services, through the
+        # separately-isolated ArduinoServiceClientNode (see the comment above that class).
+        self.arduino_client_node = arduino_client_node
         self.get_logger().info("PickAndPlaceNode is ready.")
 
     # -------------------------
@@ -178,19 +178,6 @@ class PickAndPlaceNode(Node):
     # Solenoid
     # -------------------------
 
-    # Calls an Arduino bool-in/bool-out service from the motion thread and returns whether the write succeeded, waiting briefly for the response.
-    def call_arduino_service(self, client, request):
-        if not client.wait_for_service(timeout_sec=2.0):
-            return False
-        future = client.call_async(request)
-        start = time.time()
-        while rclpy.ok() and not future.done():
-            if time.time() - start > 5.0:
-                return False
-            time.sleep(0.01)
-        result = future.result()
-        return bool(result.success) if result is not None else False
-
     # Turns the suction solenoid on or off via the arduino_node service, with a settle delay after turning off.
     def solenoid_control(self, command: str):
         if command not in ("sol on", "sol off"):
@@ -199,7 +186,7 @@ class PickAndPlaceNode(Node):
         request = SetSolenoid.Request()
         request.state = (command == "sol on")
         try:
-            ok = self.call_arduino_service(self.set_solenoid_client, request)
+            ok = self.arduino_client_node.call_arduino_service(self.arduino_client_node.set_solenoid_client, request)
             if ok:
                 self.get_logger().info(f"Solenoid: {command}")
             else:
@@ -218,7 +205,7 @@ class PickAndPlaceNode(Node):
         request = SetMotor.Request()
         request.state = (command == "motor on")
         try:
-            ok = self.call_arduino_service(self.set_motor_client, request)
+            ok = self.arduino_client_node.call_arduino_service(self.arduino_client_node.set_motor_client, request)
             if ok:
                 self.get_logger().info(f"Motor: {command}")
             else:
@@ -681,6 +668,32 @@ class PickAndPlaceNode(Node):
         super().destroy_node()
 
 
+# Isolated node that owns ONLY the solenoid/motor service clients. It runs on its own executor (see
+# main()), so it is completely separate from the MoveIt action client's wait set — the same contention
+# that corrupted the move_robot service's wait set (see the comment above PickAndPlaceNode) was also
+# adding a ~5s delay to every solenoid/motor call when those clients lived on the MoveIt node.
+class ArduinoServiceClientNode(Node):
+
+    def __init__(self):
+        super().__init__("arduino_service_client_node")
+        self.set_solenoid_client = self.create_client(SetSolenoid, 'set_solenoid')
+        self.set_motor_client = self.create_client(SetMotor, 'set_motor')
+        self.get_logger().info("ArduinoServiceClientNode is ready.")
+
+    # Calls an Arduino bool-in/bool-out service from the motion thread and returns whether the write succeeded, waiting briefly for the response.
+    def call_arduino_service(self, client, request):
+        if not client.wait_for_service(timeout_sec=2.0):
+            return False
+        future = client.call_async(request)
+        start = time.time()
+        while rclpy.ok() and not future.done():
+            if time.time() - start > 5.0:
+                return False
+            time.sleep(0.01)
+        result = future.result()
+        return bool(result.success) if result is not None else False
+
+
 # Isolated node that owns ONLY the move_robot service. It runs on its own executor (see main()), so it
 # is completely separate from the MoveIt action client's wait set — the action client can crash or stall
 # its own executor without ever stopping this service from accepting the next move. The handler just
@@ -712,21 +725,27 @@ class MoveRobotServiceNode(Node):
 # Initializes ROS, starts the nodes and executors, runs the requested task, then shuts down.
 def main(args=None):
     rclpy.init(args=args)
+    # ArduinoServiceClientNode is constructed first because PickAndPlaceNode needs the instance (to reach
+    # its service clients) at construction time — see the comment above ArduinoServiceClientNode.
+    arduino_client_node = ArduinoServiceClientNode()
     try:
-        node = PickAndPlaceNode()
+        node = PickAndPlaceNode(arduino_client_node)
     except RuntimeError:
         rclpy.shutdown()
         return
-    # Two nodes, two executors, two independent wait sets. The MoveIt node (action client + motion) is
-    # spun by its own executor — exactly the snake_test pattern, proven to run many moves with the
-    # motion on the main thread. The move_robot service lives on a SEPARATE node with its OWN executor,
-    # so the action client's wait-set problems can never stop the service from accepting the next move.
+    # Three nodes, three executors, three independent wait sets. The MoveIt node (action client + motion)
+    # is spun by its own executor — exactly the snake_test pattern, proven to run many moves with the
+    # motion on the main thread. The move_robot service and the Arduino service clients each live on
+    # their own node with their own executor, so the action client's wait-set problems can never stall
+    # the move_robot service or add latency to solenoid/motor calls.
     service_node = MoveRobotServiceNode(node.motion_queue)
 
     moveit_executor = SingleThreadedExecutor()
     moveit_executor.add_node(node)
     service_executor = SingleThreadedExecutor()
     service_executor.add_node(service_node)
+    arduino_client_executor = SingleThreadedExecutor()
+    arduino_client_executor.add_node(arduino_client_node)
 
     # Spin each executor in its own background thread; log any crash (daemon threads die silently).
     def spin_executor(executor, label):
@@ -737,6 +756,7 @@ def main(args=None):
 
     threading.Thread(target=spin_executor, args=(moveit_executor, "moveit"), daemon=True).start()
     threading.Thread(target=spin_executor, args=(service_executor, "service"), daemon=True).start()
+    threading.Thread(target=spin_executor, args=(arduino_client_executor, "arduino_client"), daemon=True).start()
 
     task = node.get_parameter("task").get_parameter_value().string_value
 

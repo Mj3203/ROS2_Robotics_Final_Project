@@ -6,6 +6,7 @@ import time
 from rclpy.node import Node
 from rclpy.task import Future
 from std_msgs.msg import String
+from std_msgs.msg import Empty
 from custom_interface.srv import ScanBoard, GetBestMove, ValidateMove, MoveRobot
 
 
@@ -31,6 +32,7 @@ class GameOperation(Node):
         self.validate_move_client = self.create_client(ValidateMove, 'validate_move')
         self.pick_and_place_client = self.create_client(MoveRobot, 'move_robot')
         self.move_complete_sub = self.create_subscription(String, 'move_complete', self.move_complete_callback, 10)
+        self.button_sub = self.create_subscription(Empty, 'button_pressed', self.button_pressed_callback, 10)
         self.game_status_pub = self.create_publisher(String, 'game_status_feed', 10)
         self.timer = self.create_timer(0.1, self.input_check_timer_callback)
         self.setup_game()
@@ -127,6 +129,14 @@ class GameOperation(Node):
 
         if self.game_state == "WAITING_FOR_PLAYER_MOVE":
             print("\rMake your move, then press ENTER... ", end="", flush=True)
+
+    # Fires when the arduino_node reports a physical button press; triggers the same scan as ENTER.
+    def button_pressed_callback(self, msg: Empty):
+        if self.game_state == "WAITING_FOR_PLAYER_MOVE":
+            self.get_logger().info("Button pressed -> Scanning board for human move.")
+            self.game_state = "SCANNING"
+            self.publish_status()
+            self.scan_board()
 
     # Sends an async request to the detection node to scan the current board state.
     def scan_board(self):
