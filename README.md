@@ -1,188 +1,211 @@
 # ROS2 Chess Robot
 
-A fully autonomous chess-playing robot system built with ROS2 Jazzy. The system uses a Kinova Gen3 Lite robotic arm to physically move chess pieces, a YOLO-based vision pipeline to detect board state, and Stockfish to select the best move.
+An autonomous chess-playing robot that sees the board with a camera, decides moves with a chess engine, and physically moves the pieces with a Kinova Gen3 Lite arm.
 
 ---
 
 ## System Overview
 
-```
-Camera
-  └─► raw_camera_feed_node ──/raw_camera_feed──► homography_transform_node
-                                                          │
-                                               /processed_camera_feed
-                                                          │
-                                                 scan_and_detect_node ◄── scan_board (service)
-                                                          │
-                                               /live_detection_feed
-                                                          │
-                                               game_operation_node
-                                                ├── scan_board (client)
-                                                ├── validate_move (client)
-                                                ├── get_best_move (client)
-                                                ├── move_robot (client)
-                                                ├── /game_status_feed (publisher)
-                                                └── /move_complete (subscriber)
-                                                          │
-                                                 chess_ai_server ◄── validate_move (service)
-                                                                  ◄── get_best_move (service)
-                                                          │
-                                     pick_and_place_pkg
-                                       ├── move_robot_service_node ◄── move_robot (service)
-                                       └── pick_and_place_node ──► /move_complete
-                                                          │
-                                                  Kinova Gen3 Lite
-                                                  Arduino + Solenoid
-```
+The robot plays a full game of chess against a human. Each part of the job is handled by a separate ROS2 package, and the packages talk to each other over ROS2 **topics** (continuous streams, like a video feed) and **services** (request/response calls, like asking a question and waiting for an answer).
 
----
+At a high level:
 
-## Packages
+- **The robot watches the board.** A camera streams video, which is straightened into a clean top-down view, and a trained YOLO model identifies every piece and which square it sits on.
+- **The robot understands chess.** A chess engine (Stockfish) knows the rules, validates the human's moves, and chooses the robot's replies.
+- **The robot moves pieces.** The arm picks up a piece with a suction cup, moves it to the destination square, and releases it. Captured pieces are removed from the board first.
+- **A coordinator runs the game.** One package acts as the "referee/conductor," stepping the game through scan → validate → think → move, turn after turn.
+- **A display shows what's happening.** A status window shows the camera feeds, the detected board, and a running game log.
 
-| Package | Node | Description |
-|---|---|---|
-| `computer_vision_pkg` | `raw_camera_feed_node` | Captures raw camera frames and publishes to `/raw_camera_feed` |
-| `computer_vision_pkg` | `homography_transform_node` | Detects ArUco markers and warps board to top-down view |
-| `computer_vision_pkg` | `scan_and_detect_node` | Runs YOLO to detect pieces and map them to chess squares |
-| `game_operation_pkg` | `game_operation_node` | Orchestrates the full game loop |
-| `chess_ai_pkg` | `chess_ai_server` | Runs Stockfish at depth 10 to select best move |
-| `pick_and_place_pkg` | `pick_and_place_node` | Controls the Kinova arm and Arduino solenoid |
-| `pick_and_place_pkg` | `move_robot_service_node` | Serves `move_robot` and queues moves for the arm |
-| `display_output_pkg` | `display_output_node` | 2x2 display window showing all camera feeds |
-| `custom_interface` | *(interfaces only)* | Defines the `ScanBoard`, `ValidateMove`, `GetBestMove`, and `MoveRobot` service messages |
+### What each package does
 
----
+| Package | Responsibility |
+|---|---|
+| `computer_vision_pkg` | Captures the raw camera feed, warps it into a flat top-down view using ArUco corner markers, then runs YOLO to detect each piece and report the board state (also serves on-demand board scans). |
+| `chess_ai_pkg` | Owns the authoritative chess board. Validates human moves and uses Stockfish to choose the robot's moves. |
+| `pick_and_place_pkg` | Drives the Kinova arm and suction cup to physically move and capture pieces. |
+| `game_operation_pkg` | The conductor. Runs the turn-by-turn game loop and calls the other packages in the right order. |
+| `display_output_pkg` | Shows a 2×2 grid of camera/detection views plus a status bar and game log. |
+| `custom_interface` | Defines the custom service messages the packages use to talk to each other. |
 
-## ROS2 Topics
+### How they communicate
 
-| Topic | Publisher | Subscriber | Description |
-|---|---|---|---|
-| `/raw_camera_feed` | `raw_camera_feed_node` | `homography_transform_node`, `display_output_node` | Raw 1920x1080 camera frames |
-| `/processed_camera_feed` | `homography_transform_node` | `scan_and_detect_node`, `display_output_node` | Warped top-down board image |
-| `/live_detection_feed` | `scan_and_detect_node` | `display_output_node` | Continuous YOLO annotated frames |
-| `/game_status_feed` | `game_operation_node` | `display_output_node` | Current game state and move info (JSON) |
-| `/move_complete` | `pick_and_place_node` | `game_operation_node` | Signals the arm finished a move (`SUCCESS`/`ERROR`) |
+**Topics (continuous streams):**
 
-## ROS2 Services
+- `raw_camera_feed` — live camera image (published by `computer_vision_pkg`)
+- `processed_camera_feed` — straightened top-down board view (published by `computer_vision_pkg`)
+- `live_detection_feed` — board view with YOLO detections drawn on (published by `computer_vision_pkg`)
+- `game_status_feed` — current game state and move info, used by the display (published by `game_operation_pkg`)
 
-| Service | Server | Client | Description |
-|---|---|---|---|
-| `scan_board` | `scan_and_detect_node` | `game_operation_node` | Scans the board and returns its state as JSON |
-| `validate_move` | `chess_ai_server` | `game_operation_node` | Checks the scanned board against the legal moves |
-| `get_best_move` | `chess_ai_server` | `game_operation_node` | Returns best UCI move from Stockfish |
-| `move_robot` | `move_robot_service_node` | `game_operation_node` | Commands arm to execute a UCI move |
+**Services (request/response, defined in `custom_interface`):**
+
+- `ScanBoard` — "scan the board and tell me what pieces are where" → served by `computer_vision_pkg`
+- `ValidateMove` — "is the scanned board a legal move?" → served by `chess_ai_pkg`
+- `GetBestMove` — "here's the human's move, what's the robot's reply?" → served by `chess_ai_pkg`
+- `MoveRobot` — "physically make this move (and capture if needed)" → served by `pick_and_place_pkg`
 
 ---
 
 ## Game Loop
 
-1. At startup the operator chooses whether the robot plays **White** or **Black**.
-2. If the robot is White, it requests its opening move via `get_best_move` and the arm executes it via `move_robot`.
-3. The human makes their move physically, then presses **ENTER**.
-4. `game_operation_node` calls `scan_board`; `scan_and_detect_node` runs YOLO and returns the current board state.
-5. `game_operation_node` calls `validate_move`; `chess_ai_server` compares the scan against the legal moves. If it matches none, the move is rejected and the human retries (back to step 3).
-6. The validated human move is sent to `get_best_move`; `chess_ai_server` applies it, runs Stockfish, and returns the robot's reply with a capture flag and game status.
-7. If the status is checkmate/stalemate/draw, the game ends. Otherwise the arm executes the reply via `move_robot` (capturing the enemy piece first if needed) and reports completion on `/move_complete`.
-8. Repeat from step 3.
+At startup, the operator is asked whether the robot plays **White** or **Black**. From there the game runs automatically, one turn at a time.
 
----
+### If the robot plays White (moves first)
 
-## Hardware
+1. The robot immediately asks the chess engine for its opening move.
+2. The arm executes that move on the board.
+3. The robot then waits for the human to respond.
 
-- **Robotic Arm:** Kinova Gen3 Lite (IP: 192.168.1.10)
-- **Gripper:** Arduino-controlled solenoid
-- **Camera:** USB camera at `/dev/video0` (1920x1080)
-- **Board Markers:** 4x ArUco markers (DICT_5X5_250, IDs 0-3) at board corners
+### If the robot plays Black (waits for the human)
+
+1. The robot waits for the human to make the first move.
+2. The human moves a piece, then presses **ENTER** to signal "your turn."
+
+### Each turn, from the robot's perspective
+
+1. **Wait for the human.** The human makes their move physically and presses **ENTER**.
+2. **Scan the board.** `game_operation_pkg` calls `ScanBoard`; `computer_vision_pkg` runs YOLO and returns the current piece layout.
+3. **Validate the move.** `game_operation_pkg` calls `ValidateMove`; `chess_ai_pkg` compares the scan against the legal moves from the current position.
+   - If the scan doesn't match any legal move, the move is rejected with a reason and the human is asked to redo it (back to step 1).
+4. **Ask the AI for a reply.** Once the human's move is valid, `game_operation_pkg` calls `GetBestMove`. `chess_ai_pkg` applies the human's move, runs Stockfish, and returns the robot's best move along with whether it is a **capture** and the resulting **game status** (e.g. check, checkmate, stalemate, draw).
+5. **Check for game over.** If the status is checkmate/stalemate/draw, the loop ends and the result is reported.
+6. **Execute the robot's move.** Otherwise `game_operation_pkg` calls `MoveRobot` with the move and the capture flag; `pick_and_place_pkg` drives the arm:
+   - **Normal move:** hover over the source square → descend → suction on → lift → travel to the target square → descend → suction off → retract.
+   - **Capture handling:** if the move is a capture, the arm first picks up the enemy piece on the target square and drops it into a side basket, **then** moves its own piece onto that square.
+7. **Back to waiting.** Control returns to step 1 for the human's next move.
+
+Throughout, `game_operation_pkg` publishes the current state to `game_status_feed`, so `display_output_pkg` always shows the latest move, status, and log.
 
 ---
 
 ## Docker Setup
 
-The project runs inside Docker with ROS2 Jazzy, MoveIt2, and ros2_kortex pre-installed.
+The project uses **two Dockerfiles**, built in sequence. The first builds the heavy ROS2 + Kinova base and rarely changes; the second adds the Python dependencies and the project code on top, and rebuilds quickly.
 
-**Build the images:**
+### 1. `Dockerfile.kortex_jazzy` → `kortex_jazzy` image
+
+The base image. Contains everything ROS2- and arm-related:
+
+- **ROS2 Jazzy** (`osrf/ros:jazzy-desktop-full`)
+- **MoveIt2** (`ros-jazzy-moveit`)
+- **Cyclone DDS** as the default RMW (Kinova's recommendation for MoveIt2)
+- **`ros2_kortex`** — the Kinova Gen3 Lite driver, cloned from the `jazzy` branch and built from source
+- A patch to `gen3_lite_macro.xacro` that fixes an upstream bug in the `jazzy` branch (a missing `gripper` parameter on `load_arm` that otherwise causes a xacro error)
+
+Build it first (slow, only needs rebuilding when the ROS/arm layer changes):
+
 ```bash
-docker build -f Dockerfile.base -t chessbot_base .
-docker build -f Dockerfile -t chessbot .
+docker build -f Dockerfile.kortex_jazzy -t kortex_jazzy .
 ```
 
-**Run the container:**
-```bash
-xhost +local:docker
+### 2. `Dockerfile.dependencies` → `chessbot` image
 
-docker run -it --privileged --net=host \
-  -v /dev:/dev \
-  -v ~/workspaces/ROS2_Robotics_Final_Project/robotics_final_project/ros2_ws/src:/robotics_final_project/ros2_ws/src \
-  -e DISPLAY=$DISPLAY \
-  -v /tmp/.X11-unix:/tmp/.X11-unix \
-  chessbot
+Builds **on top of `kortex_jazzy`** and adds the project layer:
+
+- **Python dependencies:** `ultralytics` (YOLO), `opencv-python`, `numpy`, `stockfish`, `chess`, `setuptools`
+- **`pymoveit2`** — the Python MoveIt2 API, cloned and built
+- **The project source code** (`src/`), built with `colcon build --symlink-install`
+
+Build it whenever you change project code or Python dependencies (fast):
+
+```bash
+docker build -f Dockerfile.dependencies -t chessbot .
 ```
+
+> Build order matters: `kortex_jazzy` must exist before building `chessbot`, since `Dockerfile.dependencies` starts `FROM kortex_jazzy`.
 
 ---
 
 ## Running the System
 
-**Terminal 1 — Kinova driver + MoveIt2:**
+### Terminal 1 — start the container and launch the arm
+
+Start the `chessbot` container, mounting your live `src/` so code changes are visible without rebuilding, and forwarding the display for the camera/status windows:
+
 ```bash
-source /opt/ros/jazzy/setup.bash
-source /kortex_ws/install/setup.bash
+docker run -it --privileged --net=host \
+  -v /dev:/dev \
+  -v ~/workspaces/ROS2_Robotics_Final_Project/robotics_final_project/ros2_ws/src:/robotics_final_project/ros2_ws/src \
+  -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix \
+  chessbot
+```
+
+- `--privileged` — required for Kinova arm access
+- `--net=host` — required for the Kinova ethernet connection
+- `-v /dev:/dev` — maps USB/serial devices so the Arduino is visible
+- `-e DISPLAY` / `-v /tmp/.X11-unix` — forwards the GUI windows
+
+Inside the container, launch the full arm stack (driver + MoveIt + RViz) with a single command:
+
+```bash
 ros2 launch kinova_gen3_lite_moveit_config robot.launch.py robot_ip:=192.168.1.10
 ```
 
-**Terminal 2 — Raw camera feed:**
+### Additional terminals — open more shells in the running container
+
+Each node runs in its own shell. To open another shell inside the already-running container:
+
 ```bash
-source /opt/ros/jazzy/setup.bash
-source /robotics_final_project/ros2_ws/install/setup.bash
+docker exec -it $(docker ps -q) bash --login
+```
+
+Run this once per node you want to start.
+
+### Running each node
+
+```bash
+# Vision pipeline
 ros2 run computer_vision_pkg raw_camera_feed
-```
-
-**Terminal 3 — Homography transform:**
-```bash
-source /opt/ros/jazzy/setup.bash
-source /robotics_final_project/ros2_ws/install/setup.bash
 ros2 run computer_vision_pkg homography_transform
-```
-
-**Terminal 4 — Piece detection:**
-```bash
-source /opt/ros/jazzy/setup.bash
-source /robotics_final_project/ros2_ws/install/setup.bash
 ros2 run computer_vision_pkg scan_and_detect
-```
 
-**Terminal 5 — Chess AI:**
-```bash
-source /opt/ros/jazzy/setup.bash
-source /robotics_final_project/ros2_ws/install/setup.bash
+# Chess engine and game coordinator
 ros2 run chess_ai_pkg chess_ai
-```
+ros2 run game_operation_pkg game_operation
 
-**Terminal 6 — Pick and place:**
-```bash
-source /opt/ros/jazzy/setup.bash
-source /robotics_final_project/ros2_ws/install/setup.bash
+# Display
+ros2 run display_output_pkg display_output
+
+# Arm — serve mode (waits for MoveRobot requests during a game)
 ros2 run pick_and_place_pkg pick_and_place
 ```
 
-**Terminal 7 — Game operation:**
-```bash
-source /opt/ros/jazzy/setup.bash
-source /robotics_final_project/ros2_ws/install/setup.bash
-ros2 run game_operation_pkg game_operation
-```
-
-**Terminal 8 — Display output:**
-```bash
-source /opt/ros/jazzy/setup.bash
-source /robotics_final_project/ros2_ws/install/setup.bash
-ros2 run display_output_pkg display_output
-```
+`pick_and_place` defaults to **serve** mode, where it waits for `MoveRobot` requests from the game loop. It also supports a `home` task and a set of tune modes (below).
 
 ---
 
-## Dependencies
+## Tune Commands
 
-- ROS2 Jazzy
-- MoveIt2
-- ros2_kortex (pinned to commit `3ca0e71`)
-- Python: `python-chess`, `ultralytics`, `pymoveit2`, `pyserial`, `stockfish`
+Tune modes drive the arm to specific poses for calibration and testing, without running a full game. They use the `task:=tune` parameter plus a `tune_mode` (and a `tune_square` for the square-based modes).
+
+```bash
+# Move to the home pose
+ros2 run pick_and_place_pkg pick_and_place --ros-args -p task:=tune -p tune_mode:=home
+
+# Move to the center hover pose above the board
+ros2 run pick_and_place_pkg pick_and_place --ros-args -p task:=tune -p tune_mode:=center
+
+# Hold position (keeps current pose)
+ros2 run pick_and_place_pkg pick_and_place --ros-args -p task:=tune -p tune_mode:=hold
+
+# Open the gripper / release suction
+ros2 run pick_and_place_pkg pick_and_place --ros-args -p task:=tune -p tune_mode:=open
+
+# Hover over a square, then descend to board level (e.g. e4)
+ros2 run pick_and_place_pkg pick_and_place --ros-args -p task:=tune -p tune_mode:=square -p tune_square:=e4
+
+# Hover over a square, descend, then lift back up (e.g. e4)
+ros2 run pick_and_place_pkg pick_and_place --ros-args -p task:=tune -p tune_mode:=lift -p tune_square:=e4
+
+# Move directly to a square's hover (no center-hover waypoint, e.g. h8)
+ros2 run pick_and_place_pkg pick_and_place --ros-args -p task:=tune -p tune_mode:=direct -p tune_square:=h8
+```
+
+The `square`, `lift`, and `direct` modes require a `tune_square` (e.g. `a1`–`h8`). The `home`, `center`, `hold`, and `open` modes do not.
+
+### Snake test
+
+Visits every square on the board in sequence — useful for checking reachability across the whole board:
+
+```bash
+ros2 run pick_and_place_pkg snake_test
+```
