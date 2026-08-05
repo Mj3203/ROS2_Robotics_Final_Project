@@ -14,15 +14,6 @@ Created an autonomous chess-playing robot that uses a Kinova Gen3 Lite robot arm
 
 Each portion is independent, so each package/node can be debugged, restarted, or replaced independently of one another.
 
-| Package | Responsibility |
-|---|---|
-| `computer_vision_pkg` | Captures the raw camera feed, warps it into a flat top-down view using ArUco corner markers, then runs YOLO to detect each piece and report the board state (also serves on-demand board scans). |
-| `chess_ai_pkg` | Owns the authoritative chess board. Validates human moves and uses Stockfish to choose the robot's moves. |
-| `pick_and_place_pkg` | Drives the Kinova arm and suction cup to physically move and capture pieces. |
-| `game_operation_pkg` | The conductor. Runs the turn-by-turn game loop and calls the other packages in the right order. |
-| `display_output_pkg` | Shows a 2×2 grid of camera/detection views plus a status bar and game log. |
-| `custom_interface` | Defines the custom service messages the packages use to talk to each other. |
-
 ### How they communicate
 
 **Topics (continuous streams):**
