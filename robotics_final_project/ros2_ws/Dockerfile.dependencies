@@ -2,7 +2,6 @@
 # Dockerfile.dependencies
 # Python dependencies + pymoveit2
 #
-# Depends on: kortex_jazzy (build that first)
 # Build:  docker build -f Dockerfile.dependencies -t chessbot .
 # Run:    docker run -it --rm chessbot
 # =============================================================================
@@ -20,7 +19,7 @@ RUN pip install --no-cache-dir \
     ultralytics \
     opencv-python==4.8.0.76 \
     numpy==1.26.4 \
-    setuptools \
+    setuptools==68.1.2 \
     stockfish \
     chess \
     pyserial \
