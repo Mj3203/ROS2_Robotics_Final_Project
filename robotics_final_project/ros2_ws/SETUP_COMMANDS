@@ -3,24 +3,9 @@
 
 ## Running the System
 
-### Terminal 1 — start the container and launch the arm
+### Terminal 1 — Launch the arm
 
-Start the `chessbot` container, mounting your live `src/` so code changes are visible without rebuilding, and forwarding the display for the camera/status windows:
-
-```bash
-docker run -it --privileged --net=host \
-  -v /dev:/dev \
-  -v ~/workspaces/ROS2_Robotics_Final_Project/robotics_final_project/ros2_ws/src:/robotics_final_project/ros2_ws/src \
-  -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix \
-  chessbot
-```
-
-- `--privileged` — required for Kinova arm access
-- `--net=host` — required for the Kinova ethernet connection
-- `-v /dev:/dev` — maps USB/serial devices so the Arduino is visible
-- `-e DISPLAY` / `-v /tmp/.X11-unix` — forwards the GUI windows
-
-Inside the container, launch the full arm stack (driver + MoveIt + RViz) with a single command:
+Launch the full arm stack (driver + MoveIt + RViz) with a single command:
 
 ```bash
 ros2 launch kinova_gen3_lite_moveit_config robot.launch.py robot_ip:=192.168.1.10
