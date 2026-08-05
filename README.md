@@ -1,22 +1,18 @@
-# ROS2 Chess Robot
+# Project Overview
 
-An autonomous chess-playing robot that sees the board with a camera, decides moves with a chess engine, and physically moves the pieces with a Kinova Gen3 Lite arm.
+Created an autonomous chess-playing robot that uses a Kinova Gen3 Lite robot arm, RGB camera, and a custom compressed air end effector programmed by an Arduino Nano.
 
 ---
+## How It Works
 
-## System Overview
+1. **Vision** — A camera captures the board. ArUco tags at the corners of the chess board allows the homography node warp the image into a top-down view, correcting for any angle/position.
+2. **Object Detection** — A custom trained YOLO model scans the feed and maps every detected piece to a board square, producing a JSON representation of the current board state.
+3. **Chess AI** — The scanned board state is compared against legal chess moves to determine what the human just played. Stockfish receives the validated move and calculates the best response.
+5. **Pick and Place** — The robot arm uses MoveIt2 to plans and executes the it's moves.
+6. **Game Operation** — A central node loops the steps listed above in a specified order, depending on which color the player chooses to play.
+7. **Display Output** — Camera feeds, game status, and move history are shown on a physical display.
 
-The robot plays a full game of chess against a human. Each part of the job is handled by a separate ROS2 package, and the packages talk to each other over ROS2 **topics** (continuous streams, like a video feed) and **services** (request/response calls, like asking a question and waiting for an answer).
-
-At a high level:
-
-- **The robot watches the board.** A camera streams video, which is straightened into a clean top-down view, and a trained YOLO model identifies every piece and which square it sits on.
-- **The robot understands chess.** A chess engine (Stockfish) knows the rules, validates the human's moves, and chooses the robot's replies.
-- **The robot moves pieces.** The arm picks up a piece with a suction cup, moves it to the destination square, and releases it. Captured pieces are removed from the board first.
-- **A coordinator runs the game.** One package acts as the "referee/conductor," stepping the game through scan → validate → think → move, turn after turn.
-- **A display shows what's happening.** A status window shows the camera feeds, the detected board, and a running game log.
-
-### What each package does
+Each portion is independent, so each package/node can be debugged, restarted, or replaced independently of one another.
 
 | Package | Responsibility |
 |---|---|
