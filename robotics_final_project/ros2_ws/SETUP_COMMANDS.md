@@ -8,6 +8,8 @@
 Launch the full arm stack (driver + MoveIt + RViz) with a single command:
 
 ```bash
+docker exec -it $(docker ps -q) bash --login
+source /robotics_final_project/ros2_ws/install/setup.bash
 ros2 launch kinova_gen3_lite_moveit_config robot.launch.py robot_ip:=192.168.1.10
 ```
 
